@@ -1,0 +1,23 @@
+1. How to run
+
+make                        // compile the program
+./server listen_port        // start the server
+./client [-n number] [-t timeout] host_1:port_1 host_2:port_2 ...
+                            // execute the server at the other terminal
+
+2. server
+
+22~27行 檢查input argc
+30~41行 初始化socket，bind在特定的port上
+43~55行 無限迴圈，等待client request，並給予response
+
+3. client
+
+37~63行   檢查input argc
+66~98行   可能有多個target，初始化所有socket
+104~190行 無限迴圈，會利用select選出ready的target操作
+          每個target會有兩個狀態，分別是wait connect跟wait send
+
+4. bonus
+
+利用select進行I/O multiplexing，達成同時ping多個target
