@@ -62,8 +62,10 @@ int get_cookie_user(Cookie_info* cookie_info, int cookie) {
 }
 
 int reg_cookie(Cookie_info* cookie_info, int type, int user) {
-    int cookie = rand();
+    int cookie = 0;
     int fl = 0;
+    while (cookie == 0 || get_cookie_type(cookie_info, cookie) != COOKIE_NONE)
+        cookie = rand();
     pthread_mutex_lock(&cookie_info->lock);
     // find blanck
     for (int i = 0;i < MAX_COOKIE;++i)
