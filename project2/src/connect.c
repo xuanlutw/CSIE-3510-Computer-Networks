@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -43,4 +43,13 @@ int check_cookie(int sock_fd, int key) {
     crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
     no_crypto_send(sock_fd, "COOKIEOK", 9, 0);
     return atoi(recv_msg);
+}
+
+int get_auth(Share_data* share_data, int user_id, int sock_fd, pthread_t handle) {
+    if (user_attach(share_data->user_info, user_id, sock_fd, pthread_self()) < 0) {
+        server_log("Socket %d user dup! user_id = %d", sock_fd, user_id);
+        no_crypto_send(sock_fd, "DUP", 4, 0);
+        return -1;
+    }
+    return 0;
 }

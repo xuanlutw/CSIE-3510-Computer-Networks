@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
 void* user_handle(void* thread_data) {
     int key;
     int cookie;
-    int user;
+    int user_id;
     int sock_fd = ((Thread_data*)thread_data)->sock_fd;
     Share_data* share_data = ((Thread_data*)thread_data)->share_data;
     free((Thread_data*)thread_data);
@@ -65,15 +65,22 @@ void* user_handle(void* thread_data) {
     
     // Crypto thread
     cookie = check_cookie(sock_fd, key);
-    user = get_cookie_user(share_data->cookie_info, cookie);
+    user_id = get_cookie_user(share_data->cookie_info, cookie);
     switch (get_cookie_type(share_data->cookie_info, cookie)) {
         case COOKIE_USER:
-            server_log("Socket %d check cookie = %d, type user, user = %d", sock_fd, cookie, user);
+            no_crypto_send(sock_fd, "AUTHOK", 7, 0);
+            server_log("Socket %d check cookie = %d, type user, user_id = %d", sock_fd, cookie, user_id);
+            if (get_auth(share_data, user_id, sock_fd, pthread_self()) < 0) {
+                close(sock_fd);
+                pthread_exit(NULL);
+            }
             break;
         case COOKIE_FILE:
-            server_log("Socket %d check cookie = %d, type file, user = %d", sock_fd, cookie, user);
+            // reserve
+            server_log("Socket %d check cookie = %d, type file, user_id = %d", sock_fd, cookie, user_id);
             break;
         case COOKIE_NONE:
+            no_crypto_send(sock_fd, "AUTHFAIL", 9, 0);
             server_log("Socket %d check cookie = %d, type none", sock_fd, cookie);
             break;
     }

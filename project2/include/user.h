@@ -36,7 +36,7 @@ int get_user_id(User_info* user_info, char* username);
 
 int valid_user(User_info* user_info, char* username, char* password);
 
-void user_attach(User_info* user_info, int user_id, int sock_fd, pthread_t handle);
+int user_attach(User_info* user_info, int user_id, int sock_fd, pthread_t handle);
 void user_detach(User_info* user_info, int user_id);
 
 int user_regist(User_info* user_info, char* username, char* password);

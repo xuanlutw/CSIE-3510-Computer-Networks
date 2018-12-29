@@ -46,6 +46,7 @@ User_info* init_user_info() {
             user_info->user_info_s[i].password[0] = 0;
             user_info->user_info_s[i].status = OFFLINE;
         }
+        back_user_info(user_info);
     }
     else {
         FILE* f = fopen("./data/user_info", "r");
@@ -62,12 +63,10 @@ User_info* init_user_info() {
 }
 
 void back_user_info(User_info* user_info) {
-    pthread_mutex_lock(&user_info->lock);
     FILE* f = fopen("./data/user_info", "w");
     for (int i = 0;i < user_info->user_num;++i)
         fprintf(f, "%s\t%s\n", user_info->user_info_s[i].username, user_info->user_info_s[i].password);
     fclose(f);
-    pthread_mutex_unlock(&user_info->lock);
 }
 
 int get_user_status(User_info* user_info, int user_id) {
@@ -85,12 +84,14 @@ int get_user_num(User_info* user_info) {
     pthread_mutex_unlock(&user_info->lock);
     return ret;
 }
+
 int get_online_user_num(User_info* user_info) {
     pthread_mutex_lock(&user_info->lock);
     int ret = user_info->online_user_num;
     pthread_mutex_unlock(&user_info->lock);
     return ret;
 }
+
 int get_user_id(User_info* user_info, char* username) {
     int ret = -1;
     pthread_mutex_lock(&user_info->lock);
@@ -115,19 +116,18 @@ int valid_user(User_info* user_info, char* username, char* password) {
     return ret;
 }
 
-void user_attach(User_info* user_info, int user_id, int sock_fd, pthread_t handle) {
+int user_attach(User_info* user_info, int user_id, int sock_fd, pthread_t handle) {
+    int ret = 0;
     pthread_mutex_lock(&user_info->lock);
-    if (user_info->user_info_s[user_id].status == OFFLINE) {
-        pthread_cancel(user_info->user_info_s[user_id].handle);
-        send(user_info->user_info_s[user_id].sock_fd, "MUL_LGI", 8, 0);
-        close(user_info->user_info_s[user_id].sock_fd);
-    }
-    user_info->user_info_s[user_id].status = OFFLINE;
+    if (user_info->user_info_s[user_id].status == ONLINE)
+        ret = -1;
+    user_info->user_info_s[user_id].status = ONLINE;
     user_info->user_info_s[user_id].handle = handle;
     user_info->user_info_s[user_id].sock_fd = sock_fd;
     pthread_mutex_unlock(&user_info->lock);
-    return;
+    return ret;
 }
+
 void user_detach(User_info* user_info, int user_id) {
     pthread_mutex_lock(&user_info->lock);
     user_info->user_info_s[user_id].status = OFFLINE;

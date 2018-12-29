@@ -1,6 +1,7 @@
 #ifndef CONNECT_H
 #define CONNECT_H
 
+#include <pthread.h>
 #include "init.h"
 
 typedef struct {
@@ -13,4 +14,5 @@ Thread_data* init_thread_data(Share_data* share_data, int sock_fd);
 int hand_shake(int sock_fd, int* key);
 int check_cookie(int sock_fd, int key);
 
+int get_auth(Share_data* share_data, int user_id, int sock_fd, pthread_t handle);
 #endif
