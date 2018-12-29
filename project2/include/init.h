@@ -3,9 +3,11 @@
 
 #include <pthread.h>
 #include "user.h"
+#include "cookie.h"
 
 typedef struct {
     User_info* user_info;
+    Cookie_info* cookie_info;
     int port;
     pthread_mutex_t log_lock;
 } Share_data;
