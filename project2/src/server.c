@@ -70,7 +70,7 @@ void* user_handle(void* thread_data) {
         case COOKIE_USER:
             no_crypto_send(sock_fd, "AUTHOK", 7, 0);
             server_log("Socket %d check cookie = %d, type user, user_id = %d", sock_fd, cookie, user_id);
-            if (get_auth(share_data, user_id, sock_fd, pthread_self()) < 0) {
+            if (attach_auth(share_data, user_id, sock_fd, pthread_self()) < 0) {
                 close(sock_fd);
                 pthread_exit(NULL);
             }
@@ -82,6 +82,10 @@ void* user_handle(void* thread_data) {
         case COOKIE_NONE:
             no_crypto_send(sock_fd, "AUTHFAIL", 9, 0);
             server_log("Socket %d check cookie = %d, type none", sock_fd, cookie);
+            if (get_auth(share_data, &user_id, sock_fd, pthread_self(), key) < 0) {
+                close(sock_fd);
+                pthread_exit(NULL);
+            }
             break;
     }
 

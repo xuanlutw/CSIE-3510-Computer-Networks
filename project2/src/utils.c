@@ -28,7 +28,16 @@ void dump_time() {
 // Net
 // Reserved!
 ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags) {
-    return recv(socket, buffer, length, flags);
+    ssize_t ret = recv(socket, buffer, length, flags);
+    if (*((char*)buffer + (ret - 2)) == '\r') {
+        *((char*)buffer + (ret - 2)) = 0;
+        ret -= 2;
+    }
+    else if (*((char*)buffer + (ret - 1)) == '\n') {
+        *((char*)buffer + (ret - 1)) = 0;
+        ret -= 1;
+    }
+    return ret;
 }
 
 ssize_t crypto_send(int key, int socket, const void *buffer, size_t length, int flags) {

@@ -45,11 +45,42 @@ int check_cookie(int sock_fd, int key) {
     return atoi(recv_msg);
 }
 
-int get_auth(Share_data* share_data, int user_id, int sock_fd, pthread_t handle) {
+int attach_auth(Share_data* share_data, int user_id, int sock_fd, pthread_t handle) {
     if (user_attach(share_data->user_info, user_id, sock_fd, pthread_self()) < 0) {
         server_log("Socket %d user dup! user_id = %d", sock_fd, user_id);
         no_crypto_send(sock_fd, "DUP", 4, 0);
         return -1;
+    }
+    return 0;
+}
+
+int get_auth(Share_data* share_data, int* user_id, int sock_fd, pthread_t handle, int key) {
+    char recv_msg[BUF_SIZE]; 
+    char* username;
+    char* password;
+    char* saveptr;
+    while (1) {
+        no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
+        if (!strcmp(recv_msg, "REG")) {
+            //no_crypto_send(sock_fd, "OKREG", 6, 0);
+            //crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
+            //server_log("Socket %d register!", sock_fd, user_id);
+        }
+        else if (!strcmp(recv_msg, "LGI")) {
+            no_crypto_send(sock_fd, "OKLGI", 6, 0);
+            crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
+            username = strtok_r(recv_msg, "\t", &saveptr);
+            password = strtok_r(NULL, "\t", &saveptr);
+            if ((*user_id = valid_user(share_data->user_info, username, password)) < 0) {
+                no_crypto_send(sock_fd, "LGIREJ", 7, 0);
+                server_log("Socket %d login fail!", sock_fd);
+            }
+            else {
+                no_crypto_send(sock_fd, "LGIDONE", 8, 0);
+                server_log("Socket %d login suc!", sock_fd);
+                return attach_auth(share_data, *user_id, sock_fd, handle);
+            }
+        }
     }
     return 0;
 }
