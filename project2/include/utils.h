@@ -6,14 +6,14 @@
 #define BUF_SIZE 1024
 
 // General
-#define server_log(LOG_LOCK, ...)   do{\
-                                    pthread_mutex_lock(LOG_LOCK);\
-                                    dump_time();\
-                                    printf(__VA_ARGS__);\
-                                    printf("\n");\
-                                    pthread_mutex_unlock(LOG_LOCK);\
-                                }while(0)
-void dump_time(pthread_mutex_t *log_lock);
+#define server_log(...)     do{\
+                                pthread_mutex_lock(&(share_data->log_lock));\
+                                dump_time();\
+                                printf(__VA_ARGS__);\
+                                printf("\n");\
+                                pthread_mutex_unlock(&(share_data->log_lock));\
+                            }while(0)
+void dump_time();
 
 // Net
 ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags);

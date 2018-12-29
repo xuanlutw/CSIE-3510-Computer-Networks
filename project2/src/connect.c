@@ -19,7 +19,7 @@ Thread_data* init_thread_data(Share_data* share_data, int sock_fd) {
     return thread_data;
 }
 
-int wait_connect(int wel_sock_fd) {
+int wait_connect(Share_data* share_data, int wel_sock_fd) {
     char str[INET_ADDRSTRLEN];
     struct sockaddr_in caddr;
     socklen_t clen = sizeof(&caddr);

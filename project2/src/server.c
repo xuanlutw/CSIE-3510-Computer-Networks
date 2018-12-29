@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 
     // Main loop, wait connect
     while (1) {
-        acp_sock_fd = wait_connect(wel_sock_fd);
+        acp_sock_fd = wait_connect(share_data, wel_sock_fd);
         Thread_data* thread_data = init_thread_data(share_data, acp_sock_fd);
         pthread_create(&t, NULL, user_handle, thread_data);
     }
@@ -62,18 +62,8 @@ void* user_handle(void* thread_data) {
     }
     else
         server_log("Socket %d hand_shake suc! key = %d", sock_fd, key);
-
-    // Connect and KD
-    recv(sock_fd, recv_msg, BUF_SIZE, 0);
-    if (strcmp(recv_msg, "HI")) {
-        send(sock_fd, "WTF", 4, 0);
-        close(sock_fd);
-        pthread_exit(NULL);
-    }
-    else
-        send(sock_fd, "HI", 3, 0);
-    // do KD...
     
+    // Crypto thread
     // Get authorization
     while (1) {
         crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
