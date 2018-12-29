@@ -37,3 +37,10 @@ int hand_shake(int sock_fd, int* key) {
     no_crypto_send(sock_fd, "HI", 3, 0);
     return 0;
 }
+
+int check_cookie(int sock_fd, int key) {
+    char recv_msg[BUF_SIZE]; 
+    crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
+    no_crypto_send(sock_fd, "COOKIEOK", 9, 0);
+    return atoi(recv_msg);
+}

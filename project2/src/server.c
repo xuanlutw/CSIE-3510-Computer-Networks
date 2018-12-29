@@ -46,7 +46,8 @@ int main(int argc, char* argv[]) {
 
 void* user_handle(void* thread_data) {
     int key;
-    int ret;
+    int cookie;
+    int user;
     int sock_fd = ((Thread_data*)thread_data)->sock_fd;
     Share_data* share_data = ((Thread_data*)thread_data)->share_data;
     free((Thread_data*)thread_data);
@@ -54,16 +55,29 @@ void* user_handle(void* thread_data) {
     char recv_msg[BUF_SIZE];
 
     // New thread
-    ret = hand_shake(sock_fd, &key);
-    if (ret == -1) {
-        server_log("Socket %d hand_shake fail!", sock_fd);
+    if (hand_shake(sock_fd, &key) == -1) {
+        server_log("Socket %d hand shake fail!", sock_fd);
         close(sock_fd);
         pthread_exit(NULL);
     }
     else
-        server_log("Socket %d hand_shake suc! key = %d", sock_fd, key);
+        server_log("Socket %d hand shake suc, key = %d", sock_fd, key);
     
     // Crypto thread
+    cookie = check_cookie(sock_fd, key);
+    user = get_cookie_user(share_data->cookie_info, cookie);
+    switch (get_cookie_type(share_data->cookie_info, cookie)) {
+        case COOKIE_USER:
+            server_log("Socket %d check cookie = %d, type user, user = %d", sock_fd, cookie, user);
+            break;
+        case COOKIE_FILE:
+            server_log("Socket %d check cookie = %d, type file, user = %d", sock_fd, cookie, user);
+            break;
+        case COOKIE_NONE:
+            server_log("Socket %d check cookie = %d, type none", sock_fd, cookie);
+            break;
+    }
+
     // Get authorization
     while (1) {
         crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
