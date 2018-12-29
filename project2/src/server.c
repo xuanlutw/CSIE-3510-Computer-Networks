@@ -7,9 +7,9 @@
 #include <sys/socket.h>
 
 #include "utils.h"
+#include "init.h"
+#include "connect.h"
 #include "user.h"
-
-#define BUF_SIZE 1024
 
 void* user_handle(void* thread_data);
 
@@ -17,6 +17,7 @@ int main(int argc, char* argv[]) {
     int port;
     int wel_sock_fd;
     int acp_sock_fd;
+    pthread_t t;
 
     // Check argc
     if (argc != 2) {
@@ -25,16 +26,17 @@ int main(int argc, char* argv[]) {
     }
     port = atoi(argv[1]);
 
+    // Init share data
     Share_data* share_data = init_share_data(port);
 
-    // Set socket
+    // Init socket
     wel_sock_fd = init_socket(argv[1]);
-    server_log("Server start on port %d\n", port);
+    server_log("Server start on port %d", port);
 
+    // Main loop, wait connect
     while (1) {
         acp_sock_fd = wait_connect(wel_sock_fd);
         Thread_data* thread_data = init_thread_data(share_data, acp_sock_fd);
-        pthread_t t;
         pthread_create(&t, NULL, user_handle, thread_data);
     }
 
@@ -43,12 +45,23 @@ int main(int argc, char* argv[]) {
 }
 
 void* user_handle(void* thread_data) {
-    int key = 0;
+    int key;
+    int ret;
     int sock_fd = ((Thread_data*)thread_data)->sock_fd;
     Share_data* share_data = ((Thread_data*)thread_data)->share_data;
     free((Thread_data*)thread_data);
 
     char recv_msg[BUF_SIZE];
+
+    // New thread
+    ret = hand_shake(sock_fd, &key);
+    if (ret == -1) {
+        server_log("Socket %d hand_shake fail!", sock_fd);
+        close(sock_fd);
+        pthread_exit(NULL);
+    }
+    else
+        server_log("Socket %d hand_shake suc! key = %d", sock_fd, key);
 
     // Connect and KD
     recv(sock_fd, recv_msg, BUF_SIZE, 0);
