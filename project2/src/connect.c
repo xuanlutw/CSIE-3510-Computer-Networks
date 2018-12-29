@@ -41,7 +41,6 @@ int hand_shake(int sock_fd, int* key) {
 int check_cookie(int sock_fd, int key) {
     char recv_msg[BUF_SIZE]; 
     crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
-    no_crypto_send(sock_fd, "COOKIEOK", 9, 0);
     return atoi(recv_msg);
 }
 
@@ -59,22 +58,32 @@ int get_auth(Share_data* share_data, int* user_id, int sock_fd, pthread_t handle
     char* username;
     char* password;
     char* saveptr;
-    while (1) {
+    int count = 5;
+    while (count--) {
         no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
         if (!strcmp(recv_msg, "REG")) {
-            //no_crypto_send(sock_fd, "OKREG", 6, 0);
-            //crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
-            //server_log("Socket %d register!", sock_fd, user_id);
+            no_crypto_send(sock_fd, "OKREG", 6, 0);
+            crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
+            username = strtok_r(recv_msg, "\t", &saveptr);
+            password = strtok_r(NULL, "\t", &saveptr);
+            *user_id = user_regist(share_data->user_info, username, password);
+            if (*user_id == W_PASSWORD)
+                no_crypto_send(sock_fd, "REGWPW", 7, 0);
+            else if (*user_id == D_USERNAME)
+                no_crypto_send(sock_fd, "REGDUP", 7, 0);
+            else {
+                no_crypto_send(sock_fd, "RRGDONE", 8, 0);
+                server_log("Socket %d register suc! user_id = %d, username = %s, password = %s", sock_fd, *user_id, username, password);
+                return attach_auth(share_data, *user_id, sock_fd, handle);
+            }
         }
         else if (!strcmp(recv_msg, "LGI")) {
             no_crypto_send(sock_fd, "OKLGI", 6, 0);
             crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
             username = strtok_r(recv_msg, "\t", &saveptr);
             password = strtok_r(NULL, "\t", &saveptr);
-            if ((*user_id = valid_user(share_data->user_info, username, password)) < 0) {
+            if ((*user_id = valid_user(share_data->user_info, username, password)) < 0)
                 no_crypto_send(sock_fd, "LGIREJ", 7, 0);
-                server_log("Socket %d login fail!", sock_fd);
-            }
             else {
                 no_crypto_send(sock_fd, "LGIDONE", 8, 0);
                 server_log("Socket %d login suc!", sock_fd);
@@ -82,5 +91,7 @@ int get_auth(Share_data* share_data, int* user_id, int sock_fd, pthread_t handle
             }
         }
     }
-    return 0;
+    no_crypto_send(sock_fd, "OVERFAIL", 9, 0);
+    server_log("Socket %d get auth fail!", sock_fd);
+    return -1;
 }

@@ -6,7 +6,9 @@
 #define ONLINE  1
 #define OFFLINE 0
 
-#define REG_FAIL -1
+#define W_PASSWORD -1
+#define D_USERNAME -2
+
 typedef struct {
     char username[MAX_USERNAME];
     char password[MAX_PASSWORD];
@@ -137,8 +139,21 @@ void user_detach(User_info* user_info, int user_id) {
 
 
 int user_regist(User_info* user_info, char* username, char* password) {
+    int user_id = get_user_id(user_info, username);
     pthread_mutex_lock(&user_info->lock);
+    if (user_id != -1)
+        user_id = D_USERNAME;
+    else if (strlen(password) > 16 || strlen(password) < 8)
+        user_id = W_PASSWORD;
+    else {
+        user_id = user_info->user_num;
+        strcpy(user_info->user_info_s[user_id].username, username);
+        strcpy(user_info->user_info_s[user_id].password, password);
+        user_info->user_info_s[user_id].status = OFFLINE;
+        ++(user_info->user_num);
+    }
+    back_user_info(user_info);
     pthread_mutex_unlock(&user_info->lock);
-    return 0;
+    return user_id;
 }
 

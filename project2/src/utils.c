@@ -41,7 +41,9 @@ ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags)
 }
 
 ssize_t crypto_send(int key, int socket, const void *buffer, size_t length, int flags) {
-    return send(socket, buffer, length, flags);
+    int ret = send(socket, buffer, length, flags);
+    send(socket, "\n", 2, flags);
+    return ret;
 }
 
 ssize_t no_crypto_recv(int socket, void *buffer, size_t length, int flags) {
@@ -58,5 +60,7 @@ ssize_t no_crypto_recv(int socket, void *buffer, size_t length, int flags) {
 }
 
 ssize_t no_crypto_send(int socket, const void *buffer, size_t length, int flags) {
-    return send(socket, buffer, length, flags);
+    int ret = send(socket, buffer, length, flags);
+    send(socket, "\n", 2, flags);
+    return ret;
 }

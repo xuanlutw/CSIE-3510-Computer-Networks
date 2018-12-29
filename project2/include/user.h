@@ -10,6 +10,9 @@
 #define ONLINE  1
 #define OFFLINE 0
 
+#define W_PASSWORD -1
+#define D_USERNAME -2
+
 typedef struct {
     char username[MAX_USERNAME];
     char password[MAX_PASSWORD];

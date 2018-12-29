@@ -88,6 +88,7 @@ void* user_handle(void* thread_data) {
             }
             break;
     }
+    invalid_cookie(share_data->cookie_info, cookie);
 
     // Get authorization
     while (1) {
