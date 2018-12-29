@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -34,7 +35,12 @@ int init_socket(char* port) {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
         exit(1);
     }
-    sockfd = socket(serinfo->ai_family, serinfo->ai_socktype, serinfo->ai_protocol);
+    
+    if ((sockfd = socket(serinfo->ai_family, serinfo->ai_socktype, serinfo->ai_protocol)) < 0) {
+        fprintf(stderr, "port %s error: %s\n", port, strerror(errno));
+        exit(1);
+    }
+
     bind(sockfd, serinfo->ai_addr, serinfo->ai_addrlen);
     listen(sockfd, 5);
     return sockfd;
