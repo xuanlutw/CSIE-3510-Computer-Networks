@@ -61,7 +61,7 @@ int get_cookie_user(Cookie_info* cookie_info, int cookie) {
     return ret;
 }
 
-int reg_cookie(Cookie_info* cookie_info, int type, int user) {
+int reg_cookie(Cookie_info* cookie_info, int type, int user_id) {
     int cookie = 0;
     int fl = 0;
     while (cookie == 0 || get_cookie_type(cookie_info, cookie) != COOKIE_NONE)
@@ -71,7 +71,7 @@ int reg_cookie(Cookie_info* cookie_info, int type, int user) {
     for (int i = 0;i < MAX_COOKIE;++i)
         if (cookie_info->cookie_info_s[i].type == COOKIE_NONE) {
             cookie_info->cookie_info_s[i].cookie = cookie;
-            cookie_info->cookie_info_s[i].user = user;
+            cookie_info->cookie_info_s[i].user = user_id;
             cookie_info->cookie_info_s[i].type = type;
             fl = 1;
             break;
@@ -81,7 +81,7 @@ int reg_cookie(Cookie_info* cookie_info, int type, int user) {
     for (int i = 0;i < MAX_COOKIE && !fl;++i)
         if (cookie_info->cookie_info_s[i].type == COOKIE_USER) {
             cookie_info->cookie_info_s[i].cookie = cookie;
-            cookie_info->cookie_info_s[i].user = user;
+            cookie_info->cookie_info_s[i].user = user_id;
             cookie_info->cookie_info_s[i].type = type;
             fl = 1;
             break;
@@ -92,6 +92,9 @@ int reg_cookie(Cookie_info* cookie_info, int type, int user) {
 }
 
 void invalid_cookie(Cookie_info* cookie_info, int cookie) {
+    if (!cookie)
+        return;
+
     pthread_mutex_lock(&cookie_info->lock);
     for (int i = 0;i < MAX_COOKIE;++i)
         if (cookie_info->cookie_info_s[i].cookie == cookie) {
@@ -100,4 +103,13 @@ void invalid_cookie(Cookie_info* cookie_info, int cookie) {
         }
     back_cookie_info(cookie_info);
     pthread_mutex_unlock(&cookie_info->lock);
+}
+
+int send_cookie(Cookie_info* cookie_info, int cookie, int user_id, int sock_fd, int key) {
+    char msg[BUF_SIZE];
+    int new_cookie = reg_cookie(cookie_info, COOKIE_USER, user_id);
+    sprintf(msg, "%d", new_cookie);
+    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    invalid_cookie(cookie_info, cookie);
+    return new_cookie;
 }

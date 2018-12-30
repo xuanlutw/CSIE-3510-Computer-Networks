@@ -76,7 +76,6 @@ void* user_handle(void* thread_data) {
                 close(sock_fd);
                 pthread_exit(NULL);
             }
-            invalid_cookie(share_data->cookie_info, cookie);
             break;
         case COOKIE_FILE:
             // reserve
@@ -92,6 +91,11 @@ void* user_handle(void* thread_data) {
             break;
     }
 
+    // Clean cookie
+    invalid_cookie(share_data->cookie_info, cookie);
+    cookie = 0;
+
+    // Main loop
     while (1) {
         no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
         // msg
@@ -117,14 +121,21 @@ void* user_handle(void* thread_data) {
         else if (!strcmp(recv_msg, "DELF")) {
             del_friend(user_id, sock_fd, key);
         }
+        // cookie
+        else if (!strcmp(recv_msg, "ASKCK")) {
+            cookie = send_cookie(share_data->cookie_info, cookie, user_id, sock_fd, key);
+        }
         // bye
         else if (!strcmp(recv_msg, "BYE")) {
             user_detach(share_data->user_info, user_id);
             invalid_cookie(share_data->cookie_info, cookie);
+            no_crypto_send(sock_fd, "BYE", 4, 0);
             close(sock_fd);
             pthread_exit(NULL);
         }
-
+        else {
+            no_crypto_send(sock_fd, "WTF", 4, 0);
+        }
     }
 
 }

@@ -8,6 +8,8 @@
 #define COOKIE_USER 1
 #define COOKIE_FILE 2
 
+#include "utils.h"
+
 typedef struct {
     int cookie;
     int user;
@@ -24,7 +26,9 @@ void back_cookie_info(Cookie_info* cookie_info);
 
 int get_cookie_type(Cookie_info* cookie_info, int cookie);
 int get_cookie_user(Cookie_info* cookie_info, int cookie);
-int reg_cookie(Cookie_info* cookie_info, int type, int user);
+int reg_cookie(Cookie_info* cookie_info, int type, int user_id);
 void invalid_cookie(Cookie_info* cookie_info, int cookie);
+
+int send_cookie(Cookie_info* cookie_info, int cookie, int user_id, int sock_fd, int key);
 
 #endif
