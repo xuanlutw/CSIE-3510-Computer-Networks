@@ -28,7 +28,7 @@ void read_unread(int user_id, int* unread) {
         fclose(f);
     }
     else {
-        unread = memset(unread, 0, sizeof(int) * MAX_USER);
+        memset(unread, 0, sizeof(int) * MAX_USER);
         back_unread(user_id, unread);
     }
     return;
