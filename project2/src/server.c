@@ -117,16 +117,14 @@ void* user_handle(void* thread_data) {
         else if (!strcmp(recv_msg, "DELF")) {
             del_friend(user_id, sock_fd, key);
         }
+        // bye
+        else if (!strcmp(recv_msg, "BYE")) {
+            user_detach(share_data->user_info, user_id);
+            invalid_cookie(share_data->cookie_info, cookie);
+            close(sock_fd);
+            pthread_exit(NULL);
+        }
 
     }
 
-    /*
-    char ret_msg[16] = "world";
-    crypto_recv(0, sock_fd, accept_msg, 16, 0);
-    crypto_send(0, sock_fd, ret_msg, 16, 0);
-    close(sock_fd);
-    printf("Hi\n");
-    */
-    close(sock_fd);
-    pthread_exit(NULL);
 }
