@@ -3,7 +3,7 @@
 
 #include "user.h"
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 10240
 
 // General
 #define server_log(...)     do{\

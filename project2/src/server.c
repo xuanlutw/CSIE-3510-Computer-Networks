@@ -91,14 +91,18 @@ void* user_handle(void* thread_data) {
             break;
     }
 
-    no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
-    if (!strcmp(recv_msg, "LIST")) {
-        send_user_list(share_data->user_info, sock_fd, key);
+    while (1) {
+        no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
+        if (!strcmp(recv_msg, "LIST")) {
+            send_user_list(share_data->user_info, sock_fd, key);
+        }
+        else if (!strcmp(recv_msg, "UNREAD")) {
+            send_unread(share_data->msg_info, user_id, sock_fd, key);
+        }
+        else if (!strcmp(recv_msg, "SEND")) {
+            send_msg(share_data->msg_info, user_id, sock_fd, key);
+        }
     }
-    else if (!strcmp(recv_msg, "UNREAD")) {
-        send_unread(share_data->msg_info, user_id, sock_fd, key);
-    }
-
 
     /*
     char ret_msg[16] = "world";

@@ -4,10 +4,12 @@
 #include <pthread.h>
 #include "user.h"
 #include "cookie.h"
+#include "msg.h"
 
 typedef struct {
     User_info* user_info;
     Cookie_info* cookie_info;
+    Msg_info* msg_info;
     int port;
     pthread_mutex_t log_lock;
 } Share_data;

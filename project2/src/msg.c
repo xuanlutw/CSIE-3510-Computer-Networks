@@ -63,13 +63,15 @@ void send_unread(Msg_info* msg_info, int user_id, int sock_fd, int key) {
         }
     pthread_mutex_unlock(msg_info->lock + user_id);
 }
-/*
+
 void send_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     char filename[BUF_SIZE];
     char msg[BUF_SIZE];
     char* saveptr;
     int to_id;
-    no_crypto_send(key, sock_fd, "OKSEND", 7, 0);
+    int unread[MAX_USER];
+    
+    no_crypto_send(sock_fd, "OKSEND", 7, 0);
     crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
     to_id = atoi(strtok_r(msg, "\t", &saveptr));
     
@@ -84,24 +86,21 @@ void send_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
         pthread_mutex_lock(msg_info->lock + user_id);
         sprintf(filename, "./data/msg%d-%d", to_id, user_id);
     }
+
     // write msg
     FILE* f = fopen(filename, "a");
-    fprintf("%d\t%s\n", user_id, strtok_r(NULL, "\t", &saveptr));
+    fprintf(f, "%d\t%s\n", user_id, strtok_r(NULL, "\t", &saveptr));
     fclose(f);
+    
     // update unread
-    sprintf(filename, "./data/unread%d", to_id);
-    if (access(filename, R_OK|W_OK) != -1) {
-        char msg[BUF_SIZE];
-        FILE* f = fopen(filename, "r");
-        while (fscanf(f, "%s", msg) != EOF)
-            crypto_send(key, sock_fd, msg, strlen(msg), 0);
-        fclose(f);
-    }
+    read_unread(to_id, unread);
+    ++unread[user_id];
+    back_unread(to_id, unread);
 
     pthread_mutex_unlock(msg_info->lock + user_id);
     pthread_mutex_unlock(msg_info->lock + to_id);
 }
-*/
+
 /*
 void back_user_info(User_info* user_info) {
     FILE* f = fopen("./data/user_info", "w");
