@@ -102,6 +102,9 @@ void* user_handle(void* thread_data) {
         else if (!strcmp(recv_msg, "SEND")) {
             send_msg(share_data->msg_info, user_id, sock_fd, key);
         }
+        else if (!strcmp(recv_msg, "READ")) {
+            read_msg(share_data->msg_info, user_id, sock_fd, key);
+        }
     }
 
     /*

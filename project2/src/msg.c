@@ -101,97 +101,55 @@ void send_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     pthread_mutex_unlock(msg_info->lock + to_id);
 }
 
-/*
-void back_user_info(User_info* user_info) {
-    FILE* f = fopen("./data/user_info", "w");
-    for (int i = 0;i < user_info->user_num;++i)
-        fprintf(f, "%s\t%s\n", user_info->user_info_s[i].username, user_info->user_info_s[i].password);
-    fclose(f);
-}
-
-int get_user_status(User_info* user_info, int user_id) {
-    int ret = OFFLINE;
-    pthread_mutex_lock(&user_info->lock);
-    if (user_id < user_info->user_num)
-        ret = user_info->user_info_s[user_id].status;
-    pthread_mutex_unlock(&user_info->lock);
-    return ret;
-}
-
-int get_user_num(User_info* user_info) {
-    pthread_mutex_lock(&user_info->lock);
-    int ret = user_info->user_num;
-    pthread_mutex_unlock(&user_info->lock);
-    return ret;
-}
-
-int get_online_user_num(User_info* user_info) {
-    pthread_mutex_lock(&user_info->lock);
-    int ret = user_info->online_user_num;
-    pthread_mutex_unlock(&user_info->lock);
-    return ret;
-}
-
-int get_user_id(User_info* user_info, char* username) {
-    int ret = -1;
-    pthread_mutex_lock(&user_info->lock);
-    for (int i = 0;i < user_info->user_num;++i)
-        if (!strcmp(username, user_info->user_info_s[i].username)) {
-            ret = i;
-            break;
-        }
-    pthread_mutex_unlock(&user_info->lock);
-    return ret;
-}
-
-int valid_user(User_info* user_info, char* username, char* password) {
-    pthread_mutex_lock(&user_info->lock);
-    int ret = -1;
-    for (int i = 0;i < user_info->user_num;++i)
-        if (!strcmp(username, user_info->user_info_s[i].username) && !strcmp(password, user_info->user_info_s[i].password)) {
-            ret = i;
-            break;
-        }
-    pthread_mutex_unlock(&user_info->lock);
-    return ret;
-}
-
-int user_attach(User_info* user_info, int user_id, int sock_fd, pthread_t handle) {
-    int ret = 0;
-    pthread_mutex_lock(&user_info->lock);
-    if (user_info->user_info_s[user_id].status == ONLINE)
-        ret = -1;
-    user_info->user_info_s[user_id].status = ONLINE;
-    user_info->user_info_s[user_id].handle = handle;
-    user_info->user_info_s[user_id].sock_fd = sock_fd;
-    pthread_mutex_unlock(&user_info->lock);
-    return ret;
-}
-
-void user_detach(User_info* user_info, int user_id) {
-    pthread_mutex_lock(&user_info->lock);
-    user_info->user_info_s[user_id].status = OFFLINE;
-    pthread_mutex_unlock(&user_info->lock);
-    return;
-}
-
-
-int user_regist(User_info* user_info, char* username, char* password) {
-    int user_id = get_user_id(user_info, username);
-    pthread_mutex_lock(&user_info->lock);
-    if (user_id != -1)
-        user_id = D_USERNAME;
-    else if (strlen(password) > 16 || strlen(password) < 8)
-        user_id = W_PASSWORD;
-    else {
-        user_id = user_info->user_num;
-        strcpy(user_info->user_info_s[user_id].username, username);
-        strcpy(user_info->user_info_s[user_id].password, password);
-        user_info->user_info_s[user_id].status = OFFLINE;
-        ++(user_info->user_num);
+void read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
+    char filename[BUF_SIZE];
+    char msg[BUF_SIZE];
+    char out_msg[BUF_SIZE + 100];
+    int to_id;
+    int src_id;
+    int counter = 0;
+    int unread[MAX_USER];
+    FILE* f;
+    
+    no_crypto_send(sock_fd, "OKREAD", 7, 0);
+    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    to_id = atoi(msg);
+    
+    // prevent dead lock
+    if (to_id > user_id) {
+        pthread_mutex_lock(msg_info->lock + user_id);
+        pthread_mutex_lock(msg_info->lock + to_id);
+        sprintf(filename, "./data/msg%d-%d", user_id, to_id);
     }
-    back_user_info(user_info);
-    pthread_mutex_unlock(&user_info->lock);
-    return user_id;
+    else {
+        pthread_mutex_lock(msg_info->lock + to_id);
+        pthread_mutex_lock(msg_info->lock + user_id);
+        sprintf(filename, "./data/msg%d-%d", to_id, user_id);
+    }
+
+    // send counter
+    f = fopen(filename, "r");
+    while (fscanf(f, "%d\t%s\n", &src_id, msg) != EOF)
+        ++counter;
+    fclose(f);
+    sprintf(msg, "%d", counter);
+    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    
+    // send and update unread
+    read_unread(user_id, unread);
+    sprintf(msg, "%d", unread[to_id]);
+    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    unread[to_id] = 0;
+    back_unread(user_id, unread);
+
+    // send msg
+    f = fopen(filename, "r");
+    while (fscanf(f, "%d\t%s\n", &src_id, msg) != EOF) {
+        sprintf(out_msg, "%d\t%s", src_id, msg);
+        crypto_send(key, sock_fd, out_msg, strlen(msg), 0);
+    }
+    fclose(f);
+
+    pthread_mutex_unlock(msg_info->lock + user_id);
+    pthread_mutex_unlock(msg_info->lock + to_id);
 }
-*/
