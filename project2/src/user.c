@@ -161,9 +161,12 @@ int user_regist(User_info* user_info, char* username, char* password) {
 void send_user_list(User_info* user_info, int sock_fd, int key) {
     int user_num = get_user_num(user_info);
     char msg[BUF_SIZE] = {};
+    pthread_mutex_lock(&user_info->lock);
+    sprintf(msg, "%d", user_num);
+    crypto_send(key, sock_fd, msg, strlen(msg), 0);
     for (int i = 0;i < user_num;++i) {
         sprintf(msg, "%s\t%d", user_info->user_info_s[i].username, user_info->user_info_s[i].status);
         crypto_send(key, sock_fd, msg, strlen(msg), 0);
     }
-    crypto_send(key, sock_fd, "ENDLIST", 8, 0);
+    pthread_mutex_unlock(&user_info->lock);
 }
