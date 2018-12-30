@@ -1,29 +1,3 @@
-/*
-#define MAX_USER 1024
-#define MAX_USERNAME 16
-#define MAX_PASSWORD 16
-
-#define ONLINE  1
-#define OFFLINE 0
-
-#define W_PASSWORD -1
-#define D_USERNAME -2
-
-typedef struct {
-    char username[MAX_USERNAME];
-    char password[MAX_PASSWORD];
-    char status;
-    int sock_fd;
-    pthread_t handle;
-} User_info_s;
-
-typedef struct {
-    int user_num;
-    int online_user_num;
-    User_info_s user_info_s[MAX_USER];
-} User_info;
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -111,7 +85,7 @@ int valid_user(User_info* user_info, char* username, char* password) {
     pthread_mutex_lock(&user_info->lock);
     int ret = -1;
     for (int i = 0;i < user_info->user_num;++i)
-        if (!strcmp(username, user_info->user_info_s[i].username) && !strcmp(password, user_info->user_info_s[i].password)) {
+        if (!strcmp(username, user_info->user_info_s[i].username) && password && !strcmp(password, user_info->user_info_s[i].password)) {
             ret = i;
             break;
         }
