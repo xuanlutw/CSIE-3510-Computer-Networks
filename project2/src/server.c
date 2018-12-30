@@ -10,6 +10,7 @@
 #include "init.h"
 #include "connect.h"
 #include "user.h"
+#include "msg.h"
 
 void* user_handle(void* thread_data);
 
@@ -74,6 +75,7 @@ void* user_handle(void* thread_data) {
                 close(sock_fd);
                 pthread_exit(NULL);
             }
+            invalid_cookie(share_data->cookie_info, cookie);
             break;
         case COOKIE_FILE:
             // reserve
@@ -88,22 +90,16 @@ void* user_handle(void* thread_data) {
             }
             break;
     }
-    invalid_cookie(share_data->cookie_info, cookie);
 
-    // Get authorization
-    while (1) {
-        crypto_recv(key, sock_fd, recv_msg, BUF_SIZE, 0);
-        if (!strcmp(recv_msg, "LGI")) {
-            crypto_send(key, sock_fd, "OKLGI", 6, 0);
-            break;
-        }
-        else if (!strcmp(recv_msg, "REG")) {
-            crypto_send(key, sock_fd, "OKREG", 6, 0);
-        }
-        else {
-            crypto_send(key, sock_fd, "NOAUTH", 7, 0);
-        }
+    no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
+    if (!strcmp(recv_msg, "LIST")) {
+        send_user_list(share_data->user_info, sock_fd, key);
     }
+    else if (!strcmp(recv_msg, "UNREAD")) {
+        send_unread(share_data->msg_info, user_id, sock_fd, key);
+    }
+
+
     /*
     char ret_msg[16] = "world";
     crypto_recv(0, sock_fd, accept_msg, 16, 0);

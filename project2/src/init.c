@@ -16,6 +16,7 @@ Share_data* init_share_data(int port) {
     Share_data* share_data = (Share_data*)malloc(sizeof(Share_data));
     share_data->user_info = init_user_info();
     share_data->cookie_info = init_cookie_info();
+    share_data->msg_info = init_msg_info();
     share_data->port = port;
     pthread_mutex_init(&(share_data->log_lock), NULL);
     return share_data;

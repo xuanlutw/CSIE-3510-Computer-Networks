@@ -1,29 +1,3 @@
-/*
-#define MAX_USER 1024
-#define MAX_USERNAME 16
-#define MAX_PASSWORD 16
-
-#define ONLINE  1
-#define OFFLINE 0
-
-#define W_PASSWORD -1
-#define D_USERNAME -2
-
-typedef struct {
-    char username[MAX_USERNAME];
-    char password[MAX_PASSWORD];
-    char status;
-    int sock_fd;
-    pthread_t handle;
-} User_info_s;
-
-typedef struct {
-    int user_num;
-    int online_user_num;
-    User_info_s user_info_s[MAX_USER];
-} User_info;
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,38 +7,102 @@ typedef struct {
 #include <sys/socket.h>
 #include <pthread.h>
 
-#include "user.h"
 #include "utils.h"
+#include "msg.h"
 
-User_info* init_user_info() {
-    User_info* user_info = (User_info*)malloc(sizeof(User_info));
-    pthread_mutex_init (&(user_info->lock), NULL);
-    if (access("./data", R_OK) == -1)
-        while (mkdir("./data", S_IRWXU) == -1);
-    if (access("./data/user_info", R_OK|W_OK) == -1) {
-        user_info->user_num = 0;
-        user_info->online_user_num = 0;
-        for (int i = 0;i < MAX_USER; ++i) {
-            user_info->user_info_s[i].username[0] = 0;
-            user_info->user_info_s[i].password[0] = 0;
-            user_info->user_info_s[i].status = OFFLINE;
-        }
-        back_user_info(user_info);
-    }
-    else {
-        FILE* f = fopen("./data/user_info", "r");
-        user_info->online_user_num = 0;
-        int i = 0;
-        while (fscanf(f, "%s\t%s", user_info->user_info_s[i].username, user_info->user_info_s[i].password) != EOF) {
-            user_info->user_info_s[i].status = OFFLINE;
-            ++i;
-        }
-        user_info->user_num = i;
-        fclose(f);
-    }
-    return user_info;
+Msg_info* init_msg_info() {
+    Msg_info* msg_info = (Msg_info*)malloc(sizeof(Msg_info));
+    for (int i = 0;i < MAX_USER;++i)
+        pthread_mutex_init (&(msg_info->lock[i]), NULL);
+    return msg_info;
 }
 
+void read_unread(int user_id, int* unread) {
+    char filename[BUF_SIZE];
+    FILE* f;
+    sprintf(filename, "./data/unread%d", user_id);
+    if (access(filename, R_OK|W_OK) != -1) {
+        f = fopen(filename, "r");
+        for (int i = 0;i < MAX_USER;++i)
+            fscanf(f, "%d", unread + i);
+        fclose(f);
+    }
+    else {
+        unread = memset(unread, 0, sizeof(int) * MAX_USER);
+        back_unread(user_id, unread);
+    }
+    return;
+}
+
+void back_unread(int user_id, int* unread) {
+    char filename[BUF_SIZE];
+    FILE* f;
+    sprintf(filename, "./data/unread%d", user_id);
+    f = fopen(filename, "w");
+    for (int i = 0;i < MAX_USER;++i)
+        fprintf(f, "\t%d", unread[i]);
+    fclose(f);
+    return;
+}
+
+void send_unread(Msg_info* msg_info, int user_id, int sock_fd, int key) {
+    int unread[MAX_USER];
+    int counter = 0;
+    char msg[BUF_SIZE];
+    pthread_mutex_lock(msg_info->lock + user_id);
+    read_unread(user_id, unread);
+    for (int i = 0;i < MAX_USER;++i)
+        if (unread[i] != 0)
+            ++counter;
+    sprintf(msg, "%d", counter);
+    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    for (int i = 0;i < MAX_USER;++i)
+        if (unread[i] != 0) {
+            sprintf(msg, "%d\t%d", i, unread[i]);
+            crypto_send(key, sock_fd, msg, strlen(msg), 0);
+        }
+    pthread_mutex_unlock(msg_info->lock + user_id);
+}
+/*
+void send_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
+    char filename[BUF_SIZE];
+    char msg[BUF_SIZE];
+    char* saveptr;
+    int to_id;
+    no_crypto_send(key, sock_fd, "OKSEND", 7, 0);
+    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    to_id = atoi(strtok_r(msg, "\t", &saveptr));
+    
+    // prevent dead lock
+    if (to_id > user_id) {
+        pthread_mutex_lock(msg_info->lock + user_id);
+        pthread_mutex_lock(msg_info->lock + to_id);
+        sprintf(filename, "./data/msg%d-%d", user_id, to_id);
+    }
+    else {
+        pthread_mutex_lock(msg_info->lock + to_id);
+        pthread_mutex_lock(msg_info->lock + user_id);
+        sprintf(filename, "./data/msg%d-%d", to_id, user_id);
+    }
+    // write msg
+    FILE* f = fopen(filename, "a");
+    fprintf("%d\t%s\n", user_id, strtok_r(NULL, "\t", &saveptr));
+    fclose(f);
+    // update unread
+    sprintf(filename, "./data/unread%d", to_id);
+    if (access(filename, R_OK|W_OK) != -1) {
+        char msg[BUF_SIZE];
+        FILE* f = fopen(filename, "r");
+        while (fscanf(f, "%s", msg) != EOF)
+            crypto_send(key, sock_fd, msg, strlen(msg), 0);
+        fclose(f);
+    }
+
+    pthread_mutex_unlock(msg_info->lock + user_id);
+    pthread_mutex_unlock(msg_info->lock + to_id);
+}
+*/
+/*
 void back_user_info(User_info* user_info) {
     FILE* f = fopen("./data/user_info", "w");
     for (int i = 0;i < user_info->user_num;++i)
@@ -157,13 +195,4 @@ int user_regist(User_info* user_info, char* username, char* password) {
     pthread_mutex_unlock(&user_info->lock);
     return user_id;
 }
-
-void send_user_list(User_info* user_info, int sock_fd, int key) {
-    int user_num = get_user_num(user_info);
-    char msg[BUF_SIZE] = {};
-    for (int i = 0;i < user_num;++i) {
-        sprintf(msg, "%s\t%d", user_info->user_info_s[i].username, user_info->user_info_s[i].status);
-        crypto_send(key, sock_fd, msg, strlen(msg), 0);
-    }
-    crypto_send(key, sock_fd, "ENDLIST", 8, 0);
-}
+*/
