@@ -38,11 +38,15 @@ int init_socket(char* port) {
     }
     
     if ((sockfd = socket(serinfo->ai_family, serinfo->ai_socktype, serinfo->ai_protocol)) < 0) {
-        fprintf(stderr, "port %s error: %s\n", port, strerror(errno));
+        fprintf(stderr, "start socket error: %s\n", strerror(errno));
         exit(1);
     }
 
-    bind(sockfd, serinfo->ai_addr, serinfo->ai_addrlen);
+    if ((bind(sockfd, serinfo->ai_addr, serinfo->ai_addrlen)) < 0) {
+        fprintf(stderr, "bind port %s error: %s\n", port, strerror(errno));
+        exit(1);
+    }
+
     listen(sockfd, 5);
     return sockfd;
 }
