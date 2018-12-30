@@ -11,6 +11,7 @@
 #include "connect.h"
 #include "user.h"
 #include "msg.h"
+#include "friend.h"
 
 void* user_handle(void* thread_data);
 
@@ -93,6 +94,7 @@ void* user_handle(void* thread_data) {
 
     while (1) {
         no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
+        // msg
         if (!strcmp(recv_msg, "LIST")) {
             send_user_list(share_data->user_info, sock_fd, key);
         }
@@ -105,6 +107,17 @@ void* user_handle(void* thread_data) {
         else if (!strcmp(recv_msg, "READ")) {
             read_msg(share_data->msg_info, user_id, sock_fd, key);
         }
+        // friend
+        else if (!strcmp(recv_msg, "FRLIST")) {
+            send_friend(user_id, sock_fd, key);
+        }
+        else if (!strcmp(recv_msg, "ADDF")) {
+            add_friend(user_id, sock_fd, key);
+        }
+        else if (!strcmp(recv_msg, "DELF")) {
+            del_friend(user_id, sock_fd, key);
+        }
+
     }
 
     /*
