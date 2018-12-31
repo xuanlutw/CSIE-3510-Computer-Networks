@@ -139,7 +139,20 @@ void send_user_list(User_info* user_info, int sock_fd, int key) {
     sprintf(msg, "%d", user_num);
     crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
     for (int i = 0;i < user_num;++i) {
-        sprintf(msg, "%s\t%d", user_info->user_info_s[i].username, user_info->user_info_s[i].status);
+        sprintf(msg, "%s", user_info->user_info_s[i].username);
+        crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    }
+    pthread_mutex_unlock(&user_info->lock);
+}
+
+void send_user_online(User_info* user_info, int sock_fd, int key) {
+    int user_num = get_user_num(user_info);
+    char msg[BUF_SIZE] = {};
+    pthread_mutex_lock(&user_info->lock);
+    sprintf(msg, "%d", user_num);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    for (int i = 0;i < user_num;++i) {
+        sprintf(msg, "%d", user_info->user_info_s[i].status);
         crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
     }
     pthread_mutex_unlock(&user_info->lock);

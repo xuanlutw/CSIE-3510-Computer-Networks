@@ -45,5 +45,6 @@ void user_detach(User_info* user_info, int user_id);
 int user_regist(User_info* user_info, char* username, char* password);
 
 void send_user_list(User_info* user_info, int sock_fd, int key);
+void send_user_online(User_info* user_info, int sock_fd, int key);
 
 #endif

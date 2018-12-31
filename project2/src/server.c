@@ -114,6 +114,10 @@ void* user_handle(void* thread_data) {
             send_user_list(share_data->user_info, sock_fd, key);
             server_log("User %d LIST", user_id);
         }
+        else if (!strcmp(recv_msg, "OLIST")) {
+            send_user_online(share_data->user_info, sock_fd, key);
+            server_log("User %d OLIST", user_id);
+        }
         else if (!strcmp(recv_msg, "UNREAD")) {
             send_unread(share_data->msg_info, user_id, sock_fd, key);
             server_log("User %d UNREAD", user_id);
