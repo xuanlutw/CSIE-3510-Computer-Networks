@@ -119,10 +119,12 @@ void* user_handle(void* thread_data) {
             server_log("User %d UNREAD", user_id);
         }
         else if (!strcmp(recv_msg, "SEND")) {
-            send_msg(share_data->msg_info, user_id, sock_fd, key);
+            ret = send_msg(share_data->msg_info, user_id, sock_fd, key);
+            server_log("User %d SEND to %d", user_id, ret);
         }
         else if (!strcmp(recv_msg, "READ")) {
-            read_msg(share_data->msg_info, user_id, sock_fd, key);
+            ret = read_msg(share_data->msg_info, user_id, sock_fd, key);
+            server_log("User %d read from %d", user_id, ret);
         }
         // friend
         else if (!strcmp(recv_msg, "FRLIST")) {
