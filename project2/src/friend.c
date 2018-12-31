@@ -55,7 +55,7 @@ void send_friend(int user_id, int sock_fd, int key) {
         }
 }
 
-void add_friend(int user_id, int sock_fd, int key) {
+int add_friend(int user_id, int sock_fd, int key) {
     int fr[MAX_USER];
     int add_id;
     char msg[BUF_SIZE];
@@ -66,9 +66,10 @@ void add_friend(int user_id, int sock_fd, int key) {
     read_friend(user_id, fr);
     fr[add_id] = 1;
     back_friend(user_id, fr);
+    return add_id;
 }
 
-void del_friend(int user_id, int sock_fd, int key) {
+int del_friend(int user_id, int sock_fd, int key) {
     int fr[MAX_USER];
     int del_id;
     char msg[BUF_SIZE];
@@ -79,4 +80,5 @@ void del_friend(int user_id, int sock_fd, int key) {
     read_friend(user_id, fr);
     fr[del_id] = 0;
     back_friend(user_id, fr);
+    return del_id;
 }

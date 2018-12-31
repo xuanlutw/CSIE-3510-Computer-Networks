@@ -64,7 +64,7 @@ void send_unread(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     pthread_mutex_unlock(msg_info->lock + user_id);
 }
 
-void send_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
+int send_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     char filename[BUF_SIZE];
     char msg[BUF_SIZE];
     char* saveptr;
@@ -99,9 +99,10 @@ void send_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
 
     pthread_mutex_unlock(msg_info->lock + user_id);
     pthread_mutex_unlock(msg_info->lock + to_id);
+    return to_id;
 }
 
-void read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
+int read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     char filename[BUF_SIZE];
     char msg[BUF_SIZE];
     char out_msg[BUF_SIZE + 100];
@@ -152,4 +153,5 @@ void read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
 
     pthread_mutex_unlock(msg_info->lock + user_id);
     pthread_mutex_unlock(msg_info->lock + to_id);
+    return to_id;
 }

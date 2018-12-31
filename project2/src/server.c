@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include <unistd.h>
 #include <pthread.h>
@@ -20,6 +21,9 @@ int main(int argc, char* argv[]) {
     int wel_sock_fd;
     int acp_sock_fd;
     pthread_t t;
+
+    // Disable SIGPIPE before any net connection
+    signal(SIGPIPE, SIG_IGN);
 
     // Check argc
     if (argc != 2) {
@@ -50,6 +54,7 @@ void* user_handle(void* thread_data) {
     int key;
     int cookie;
     int user_id;
+    int ret;
     int sock_fd = ((Thread_data*)thread_data)->sock_fd;
     Share_data* share_data = ((Thread_data*)thread_data)->share_data;
     free((Thread_data*)thread_data);
@@ -94,16 +99,24 @@ void* user_handle(void* thread_data) {
     // Clean cookie
     invalid_cookie(share_data->cookie_info, cookie);
     cookie = 0;
+    server_log("User %d init!", user_id);
 
     // Main loop
     while (1) {
-        no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
+        ret = no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
+        // client crash
+        if (ret <= 0) {
+            server_log("User %d crash @@", user_id);
+            break;
+        }
         // msg
         if (!strcmp(recv_msg, "LIST")) {
             send_user_list(share_data->user_info, sock_fd, key);
+            server_log("User %d LIST", user_id);
         }
         else if (!strcmp(recv_msg, "UNREAD")) {
             send_unread(share_data->msg_info, user_id, sock_fd, key);
+            server_log("User %d UNREAD", user_id);
         }
         else if (!strcmp(recv_msg, "SEND")) {
             send_msg(share_data->msg_info, user_id, sock_fd, key);
@@ -114,28 +127,34 @@ void* user_handle(void* thread_data) {
         // friend
         else if (!strcmp(recv_msg, "FRLIST")) {
             send_friend(user_id, sock_fd, key);
+            server_log("User %d FRLIST", user_id);
         }
         else if (!strcmp(recv_msg, "ADDF")) {
-            add_friend(user_id, sock_fd, key);
+            ret = add_friend(user_id, sock_fd, key);
+            server_log("User %d ADDF, lucky guy = %d", user_id, ret);
         }
         else if (!strcmp(recv_msg, "DELF")) {
-            del_friend(user_id, sock_fd, key);
+            ret = del_friend(user_id, sock_fd, key);
+            server_log("User %d DELF, poor guy = %d", user_id, ret);
         }
         // cookie
         else if (!strcmp(recv_msg, "ASKCK")) {
             cookie = send_cookie(share_data->cookie_info, cookie, user_id, sock_fd, key);
+            server_log("User %d ASKCK, cookie = %d", user_id, cookie);
         }
         // bye
         else if (!strcmp(recv_msg, "BYE")) {
-            user_detach(share_data->user_info, user_id);
-            invalid_cookie(share_data->cookie_info, cookie);
-            no_crypto_send(sock_fd, "BYE", 4, 0);
-            close(sock_fd);
-            pthread_exit(NULL);
+            server_log("User %d BYE", user_id);
+            break;
         }
         else {
             no_crypto_send(sock_fd, "WTF", 4, 0);
+            server_log("User %d murmur...", user_id);
         }
     }
-
+    user_detach(share_data->user_info, user_id);
+    invalid_cookie(share_data->cookie_info, cookie);
+    no_crypto_send(sock_fd, "BYE", 4, 0);
+    close(sock_fd);
+    pthread_exit(NULL);
 }

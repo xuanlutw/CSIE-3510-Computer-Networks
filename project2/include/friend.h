@@ -11,7 +11,7 @@ void read_friend(int user_id, int* fr);
 void back_friend(int user_id, int* fr);
 
 void send_friend(int user_id, int sock_fd, int key);
-void add_friend(int user_id, int sock_fd, int key);
-void del_friend(int user_id, int sock_fd, int key);
+int add_friend(int user_id, int sock_fd, int key);
+int del_friend(int user_id, int sock_fd, int key);
 
 #endif
