@@ -40,19 +40,14 @@ void back_friend(int user_id, int* fr) {
 
 void send_friend(int user_id, int sock_fd, int key) {
     int fr[MAX_USER];
-    int counter = 0;
     char msg[BUF_SIZE];
     read_friend(user_id, fr);
-    for (int i = 0;i < MAX_USER;++i)
-        if (fr[i] != 0)
-            ++counter;
-    sprintf(msg, "%d", counter);
+    sprintf(msg, "%d", MAX_USER);
     crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-    for (int i = 0;i < MAX_USER;++i)
-        if (fr[i] != 0) {
-            sprintf(msg, "%d", i);
-            crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-        }
+    for (int i = 0;i < MAX_USER;++i) {
+        sprintf(msg, "%d", fr[i]);
+        crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    }
 }
 
 int add_friend(int user_id, int sock_fd, int key) {

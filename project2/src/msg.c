@@ -47,20 +47,15 @@ void back_unread(int user_id, int* unread) {
 
 void send_unread(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     int unread[MAX_USER];
-    int counter = 0;
     char msg[BUF_SIZE];
     pthread_mutex_lock(msg_info->lock + user_id);
     read_unread(user_id, unread);
-    for (int i = 0;i < MAX_USER;++i)
-        if (unread[i] != 0)
-            ++counter;
-    sprintf(msg, "%d", counter);
+    sprintf(msg, "%d", MAX_USER);
     crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-    for (int i = 0;i < MAX_USER;++i)
-        if (unread[i] != 0) {
-            sprintf(msg, "%d\t%d", i, unread[i]);
-            crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-        }
+    for (int i = 0;i < MAX_USER;++i) {
+        sprintf(msg, "%d", unread[i]);
+        crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    }
     pthread_mutex_unlock(msg_info->lock + user_id);
 }
 
