@@ -55,11 +55,11 @@ void send_unread(Msg_info* msg_info, int user_id, int sock_fd, int key) {
         if (unread[i] != 0)
             ++counter;
     sprintf(msg, "%d", counter);
-    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
     for (int i = 0;i < MAX_USER;++i)
         if (unread[i] != 0) {
             sprintf(msg, "%d\t%d", i, unread[i]);
-            crypto_send(key, sock_fd, msg, strlen(msg), 0);
+            crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
         }
     pthread_mutex_unlock(msg_info->lock + user_id);
 }
@@ -134,12 +134,12 @@ int read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
         ++counter;
     fclose(f);
     sprintf(msg, "%d", counter);
-    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
     
     // send and update unread
     read_unread(user_id, unread);
     sprintf(msg, "%d", unread[to_id]);
-    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
     unread[to_id] = 0;
     back_unread(user_id, unread);
 
@@ -147,7 +147,7 @@ int read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     f = fopen(filename, "r");
     while (fscanf(f, "%d\t%s\n", &src_id, msg) != EOF) {
         sprintf(out_msg, "%d\t%s", src_id, msg);
-        crypto_send(key, sock_fd, out_msg, strlen(msg), 0);
+        crypto_send(key, sock_fd, out_msg, strlen(msg) + 1, 0);
     }
     fclose(f);
 

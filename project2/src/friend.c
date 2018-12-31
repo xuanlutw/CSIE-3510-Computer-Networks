@@ -47,11 +47,11 @@ void send_friend(int user_id, int sock_fd, int key) {
         if (fr[i] != 0)
             ++counter;
     sprintf(msg, "%d", counter);
-    crypto_send(key, sock_fd, msg, strlen(msg), 0);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
     for (int i = 0;i < MAX_USER;++i)
         if (fr[i] != 0) {
             sprintf(msg, "%d", i);
-            crypto_send(key, sock_fd, msg, strlen(msg), 0);
+            crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
         }
 }
 
