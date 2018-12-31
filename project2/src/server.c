@@ -128,7 +128,7 @@ void* user_handle(void* thread_data) {
         }
         else if (!strcmp(recv_msg, "READ")) {
             ret = read_msg(share_data->msg_info, user_id, sock_fd, key);
-            server_log("User %d read from %d", user_id, ret);
+            server_log("User %d READ from %d", user_id, ret);
         }
         // friend
         else if (!strcmp(recv_msg, "FRLIST")) {
