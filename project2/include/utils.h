@@ -15,6 +15,11 @@
                             }while(0)
 void dump_time();
 
+// Base 64
+// Those functions WILL change the rough string and assume NO memory issue
+void b64_encode(char* str);
+void b64_decode(char* str);
+
 // Net
 ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags);
 ssize_t crypto_send(int key, int socket, const void *buffer, size_t length, int flags);
