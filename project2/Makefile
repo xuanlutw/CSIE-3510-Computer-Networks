@@ -7,7 +7,7 @@ SRC = $(wildcard $(SRC_DIR)/*.c)
 OBJ = $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 CPPFLAGS += -Iinclude -Ipthread
-CFLAGS += -Wall
+CFLAGS += -Wall -g
 LDFLAGS += -Llib -pthread
 LDLIBS += -lm
 
@@ -21,6 +21,9 @@ $(EXE): $(OBJ)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
+client: cl/*.c obj/utils.o
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< obj/utils.o -o client 
+
 clean:
-	$(RM) $(OBJ) server
+	$(RM) $(OBJ) server client
 
