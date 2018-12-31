@@ -12,14 +12,20 @@
 #include <arpa/inet.h>
 
 #include "utils.h"
+#include "user.h"
+
+int update_user_name();
 
 int main(int argc, char* argv[]) {
     char address[BUF_SIZE];
     char* host_name;
     char* port;
+    char* user_name[MAX_USER];
     int status;
     int sock_fd;
     int key;
+    int cookie;
+    int num_user;
     char msg[BUF_SIZE];
     char username[BUF_SIZE / 2];
     char password[BUF_SIZE / 2];
@@ -31,7 +37,7 @@ int main(int argc, char* argv[]) {
     hints.ai_socktype = SOCK_STREAM; 
     hints.ai_flags    = AI_PASSIVE; 
     
-    // Welcome info
+    // Start info
     printf("\
    _____   _   _   _        _____   _   _   ______ \n\
   / ____| | \\ | | | |      |_   _| | \\ | | |  ____|\n\
@@ -113,7 +119,65 @@ int main(int argc, char* argv[]) {
             }
         }
     }
-    //close(sock_fd);
 
+    // Get cookie, user_name
+    no_crypto_send(sock_fd, "REG", 4, 0);
+	crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    cookie = atoi(msg);
+    for (int i = 0;i < MAX_USER;++i)
+        user_name[i] = malloc(sizeof(char) * BUF_SIZE);
+    num_user = update_user_name(sock_fd, key, user_name);
+    
+    for (int i = 0;i < num_user;++i)
+        printf("%s\n", user_name[i]);
+    // Welcome info
+    /*
+    printf("\
+ ____      ____    __                                   ______               __      _  \n\
+|_  _|    |_  _|  [  |                                 |_   _ \\             [  |  _ | | \n\
+  \\ \\  /\\  / .---. | | .---.  .--.  _ .--..--. .---.     | |_) | ,--.  .---. | | / ]| | \n\
+   \\ \\/  \\/ / /__\\\\| |/ /'`\\/ .'`\\ [ `.-. .-. / /__\\\\    |  __'.`'_\\ :/ /'`\\]| '' < | | \n\
+    \\  /\\  /| \\__.,| || \\__.| \\__. || | | | | | \\__.,   _| |__) // | || \\__. | |`\\ \\|_| \n\
+     \\/  \\/  '.__.[___'.___.''.__.'[___||__||__'.__.'  |_______/\\'-;__'.___.[__|  \\_(_) \n\
+                                                                                        \n");
+    while (1) {
+        printf("Message(M)/File(F): ");
+        scanf("%s", msg);
+        if (!strcmp(msg, "M")) {
+            printf("List all(A)/online(O)/friend(F): ");
+        }
+    }
+	close(sock_fd);
+    */
+}
 
+int update_user_name(int sock_fd, int key, char** user_name) {
+    int num;
+    int ret;
+    int count;
+    int tmp;
+    char msg[BUF_SIZE];
+
+    no_crypto_send(sock_fd, "LIST", 5, 0);
+	ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    num = atoi(msg);
+    count = 0;
+
+    while (msg[count] != 0)
+        ++count;
+    ++count;
+
+    for (int i = 0;i < num;++i) {
+        if (count == ret) {
+            ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+            count = 0;
+        }
+        tmp = count;
+        while (msg[tmp] != 0)
+            ++tmp;
+        msg[tmp] = 0;
+        strcpy(user_name[i], msg + count);
+        count = tmp + 1;
+    }
+    return num;
 }
