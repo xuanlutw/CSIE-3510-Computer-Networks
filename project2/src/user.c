@@ -118,7 +118,7 @@ int user_regist(User_info* user_info, char* username, char* password) {
     pthread_mutex_lock(&user_info->lock);
     if (user_id != -1)
         user_id = D_USERNAME;
-    else if (strlen(password) > 16 || strlen(password) < 8)
+    else if (!password || strlen(password) > 16 || strlen(password) < 8)
         user_id = W_PASSWORD;
     else {
         user_id = user_info->user_num;
