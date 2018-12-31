@@ -72,7 +72,7 @@ int get_auth(Share_data* share_data, int* user_id, int sock_fd, pthread_t handle
             else if (*user_id == D_USERNAME)
                 no_crypto_send(sock_fd, "REGDUP", 7, 0);
             else {
-                no_crypto_send(sock_fd, "RRGDONE", 8, 0);
+                no_crypto_send(sock_fd, "REGDONE", 8, 0);
                 server_log("Socket %d register suc! user_id = %d, username = %s, password = %s", sock_fd, *user_id, username, password);
                 return attach_auth(share_data, *user_id, sock_fd, handle);
             }
