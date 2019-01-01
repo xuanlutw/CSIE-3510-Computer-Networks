@@ -99,10 +99,46 @@ void b64_decode(char* str) {
     }
 }
 
+// Crypto
+// a^b % p
+int power_mod(int a, int b) {
+    long long ans = 1;
+    if (b == 0)
+        ans = 1;
+    else if (b == 1)
+        ans = a;
+    else if (!(b % 2)) {
+        ans = power_mod(a, b / 2);
+        ans = (ans * ans) % DH_P;
+    }
+    else {
+        ans = (power_mod(a, b % 2) * power_mod(a, b - (b % 2))) % DH_P;
+    }
+    return ans;
+}
+
+void encryption(int key, char* buffer, size_t length) {
+    for (int i = 0;i < 1; i += 4) {
+        buffer[4 * i] += key % 256;
+        buffer[4 * i + 1] += (key >> 8) % 256;
+        buffer[4 * i + 2] += (key >> 16) % 256;
+        buffer[4 * i + 3] += (key >> 24) % 256;
+    }
+}
+
+void decryption(int key, char* buffer, size_t length) {
+    for (int i = 0;i < 1; i += 4) {
+        buffer[4 * i] -= key % 256;
+        buffer[4 * i + 1] -= (key >> 8) % 256;
+        buffer[4 * i + 2] -= (key >> 16) % 256;
+        buffer[4 * i + 3] -= (key >> 24) % 256;
+    }
+}
+
 // Net
-// Reserved!
 ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags) {
     ssize_t ret = recv(socket, buffer, length, flags);
+    //decryption(key, buffer, ret);
     /*
     if (*((char*)buffer + (ret - 2)) == '\r') {
         *((char*)buffer + (ret - 2)) = 0;
@@ -116,7 +152,11 @@ ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags)
     return ret;
 }
 
-ssize_t crypto_send(int key, int socket, const void *buffer, size_t length, int flags) {
+ssize_t crypto_send(int key, int socket, void *buffer, size_t length, int flags) {
+    //char buf2[length];
+    //for (int i = 0;i < length;++i)
+    //    buf2[i] = ((char*)buffer)[i];
+    //encryption(key, buf2, length);
     int ret = send(socket, buffer, length, flags);
     //send(socket, "\n", 2, flags);
     return ret;

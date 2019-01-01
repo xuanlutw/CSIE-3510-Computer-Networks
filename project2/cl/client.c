@@ -119,7 +119,11 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Handshake fail\n");
         exit(1);
     }
-    key = 0; // reserve
+    int b = rand();
+    sprintf(msg, "%d", power_mod(DH_G, b));
+    no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0);
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+    key = power_mod(atoi(msg), b);
 
     // Cookie
     crypto_send(key, sock_fd, "0", 2, 0);

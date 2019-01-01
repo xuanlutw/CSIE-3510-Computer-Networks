@@ -32,11 +32,16 @@ int wait_connect(Share_data* share_data, int wel_sock_fd) {
 }
 
 int hand_shake(int sock_fd, int* key) {
-    char recv_msg[BUF_SIZE]; 
-    no_crypto_recv(sock_fd, recv_msg, BUF_SIZE, 0);
-    if (strcmp(recv_msg, "HI"))
+    char msg[BUF_SIZE]; 
+    int a = rand();
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+    if (strcmp(msg, "HI"))
         return -1;
     no_crypto_send(sock_fd, "HI", 3, 0);
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+    *key = power_mod(atoi(msg), a);
+    sprintf(msg, "%d", power_mod(DH_G, a));
+    no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0);
     return 0;
 }
 
