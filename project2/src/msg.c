@@ -125,7 +125,7 @@ int read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     }
 
     // creat file
-    int fd2 = open (filename, O_RDWR|O_CREAT);
+    int fd2 = open (filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
     close(fd2);
 
     // send counter
