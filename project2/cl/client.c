@@ -13,6 +13,7 @@
 
 #include "utils.h"
 #include "user.h"
+#include "file.h"
 #include "color.h"
 
 int update_user_name(int sock_fd, int key, char** user_name);
@@ -28,6 +29,10 @@ void print_msg(int user_id, int to_id, int sock_fd, int key, char** user_name);
 
 void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_name);
 
+int update_file(int sock_fd, int key, File_list* file_list);
+void print_file(int user_id, int sock_fd, int key, char** user_name, int num_file, File_list* file_list);
+int filename_to_id(int num_file, File_list* file_list, char* target_name);
+
 int main(int argc, char* argv[]) {
     char address[BUF_SIZE];
     char* host_name;
@@ -40,10 +45,14 @@ int main(int argc, char* argv[]) {
     int user_id;
     int to_id;
     char msg[BUF_SIZE];
+    char msg2[BUF_SIZE / 2];
     char username[BUF_SIZE / 2];
     char password[BUF_SIZE / 2];
 
     char* user_name[MAX_USER];
+
+    File_list file_list[MAX_FILE];
+    int num_file;
 
     struct addrinfo *servinfo;
     struct addrinfo hints;
@@ -212,6 +221,50 @@ int main(int argc, char* argv[]) {
 
         // File
         else if (!strcmp(msg, "f")) {
+            printf("Send(s)/Read(r): ");
+            scanf("%s", msg);
+            if (!strcmp(msg, "s")) {
+                do {
+                    printf("To who? ");
+                    scanf("%s", msg);
+                    to_id = username_to_id(num_user, user_name, msg);
+                    if (to_id < 0 || to_id > num_user) {
+                        printf("User not found!\n");
+                        break;
+                    }
+                    printf("Choose file? ");
+                    scanf("%s", msg2);
+                    if (access(msg2, R_OK) == -1) {
+                        printf("File not found!\n");
+                        break;
+                    }
+                    no_crypto_send(sock_fd, "FSEND", 6, 0);
+                    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
+                    sprintf(msg, "%d\t%s", to_id, msg2);
+                    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+                    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0); //Cookie
+                    // Creat new thread!
+                } while (0);
+            }
+            else if (!strcmp(msg, "r")) {
+                do {
+                    num_file = update_file(sock_fd, key, file_list);
+                    print_file(user_id, sock_fd, key, user_name, num_file, file_list);
+                    printf("Download which file? ");
+                    scanf("%s", msg);
+                    to_id = filename_to_id(num_file, file_list, msg);
+                    if (to_id < 0) {
+                        printf("File not found!\n");
+                        break;
+                    }
+                    no_crypto_send(sock_fd, "FREAD", 6, 0);
+                    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
+                    sprintf(msg, "%d", to_id);
+                    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+                    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0); // Cookie
+                    // Creat new thread!
+                } while (0);
+            }
         }
     }
 
@@ -488,6 +541,57 @@ int username_to_id(int num_user, char**user_name, char* target_name) {
     int ret = -1;
     for (int i = 0;i < num_user;++i)
         if (!strcmp(user_name[i], target_name)) {
+            ret = i;
+            break;
+        }
+    return ret;
+}
+
+int update_file(int sock_fd, int key, File_list* file_list) {
+    int num;
+    int ret;
+    int count;
+    int tmp;
+    char msg[BUF_SIZE];
+
+    no_crypto_send(sock_fd, "FLIST", 6, 0);
+    ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    num = atoi(msg);
+    count = 0;
+
+    while (msg[count] != 0)
+        ++count;
+    ++count;
+
+    for (int i = 0;i < num;++i) {
+        if (count == ret) {
+            ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+            count = 0;
+        }
+        tmp = count;
+        while (msg[tmp] != 0)
+            ++tmp;
+        sscanf(msg + count, "%d\t%d\t%s", &(file_list[i].from), &(file_list[i].status), file_list[i].filename);
+        count = tmp + 1;
+    }
+    return num;
+}
+
+void print_file(int user_id, int sock_fd, int key, char** user_name, int num_file, File_list* file_list) {
+    printf("\n=======FILE=======\n");
+    for (int i = 0;i < num_file;++i) {
+        if (file_list[i].status == 0)
+            continue;
+        printf("%s\t: %s\n", user_name[file_list[i].from], file_list[i].filename);
+    }
+    printf("\n");
+    return;
+}
+
+int filename_to_id(int num_file, File_list* file_list, char* target_name) {
+    int ret = -1;
+    for (int i = 0;i < num_file;++i)
+        if (file_list[i].status && !strcmp(file_list[i].filename, target_name)) {
             ret = i;
             break;
         }
