@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+#include <setjmp.h>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -19,6 +21,8 @@
 #include "file.h"
 #include "color.h"
 
+static void pipe_handle(int nSigno);
+
 typedef struct {
     char filename[BUF_SIZE / 2];
     char* host_name;
@@ -26,6 +30,9 @@ typedef struct {
     int cookie;
     int direction;
 } File_thread_data;
+
+#define MAX_RECON   120
+jmp_buf buf;
 
 int update_user_name(int sock_fd, int key, char** user_name);
 void update_online(int sock_fd, int key, int num_user, int* is_online);
@@ -115,10 +122,9 @@ int main(int argc, char* argv[]) {
     key = 0; // reserve
 
     // Cookie
-    no_crypto_send(sock_fd, "0", 2, 0);
+    crypto_send(key, sock_fd, "0", 2, 0);
     no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
 
-    // Get auth
     while (1) {
         printf("Register(R)/Login(L): ");
         scanf("%s", msg);
@@ -161,6 +167,33 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Reconnection
+    if (setjmp(buf)) {
+        printf("Connection lose QQ\n");
+        for (int i = 0;i < MAX_RECON;++i) {
+            printf("Trying %d / %d...\n", i, MAX_RECON);
+            status = getaddrinfo(host_name, port, &hints, &servinfo);
+            sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+            if (!connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen))
+                break;
+            sleep(1);
+        }
+
+        // Handshake, again...
+        no_crypto_send(sock_fd, "HI", 3, 0);
+        no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+        if (strcmp(msg, "HI")) {
+            fprintf(stderr, "Handshake fail\n");
+            exit(1);
+        }
+        key = 0; // reserve
+        
+        sprintf(msg, "%d", cookie);
+        crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+        no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
+    }
+
+    // Get auth
     // Get cookie, user_name
     no_crypto_send(sock_fd, "ASKCK", 6, 0);
 	crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
@@ -170,6 +203,9 @@ int main(int argc, char* argv[]) {
     num_user = update_user_name(sock_fd, key, user_name);
     user_id = username_to_id(num_user, user_name, username);
    
+    // Start handle SIGPIPE
+    signal(SIGPIPE , &pipe_handle);
+
     // Welcome info
     printf("\
  ____      ____    __                                   ______               __      _  \n\
@@ -686,7 +722,7 @@ void* file_thread_handle(void* thread_data) {
 
     // Cookie
     sprintf(msg, "%d", cookie);
-    no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0); // NO response
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0); // NO response
 
     // Determine cookie
 
@@ -712,4 +748,9 @@ void* file_thread_handle(void* thread_data) {
     close(fd);
     close(sock_fd);
     pthread_exit(NULL);
+}
+
+static void pipe_handle(int nSigno) {
+    signal(nSigno, pipe_handle);
+    longjmp(buf, 1);
 }
