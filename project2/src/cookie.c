@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 #include "cookie.h"
+#include "file.h"
 
 Cookie_info* init_cookie_info() {
     Cookie_info* cookie_info = (Cookie_info*)malloc(sizeof(Cookie_info));
@@ -103,6 +104,16 @@ void invalid_cookie(Cookie_info* cookie_info, int cookie) {
         }
     back_cookie_info(cookie_info);
     pthread_mutex_unlock(&cookie_info->lock);
+}
+
+int reg_file_cookie(Cookie_info* cookie_info, int to_id, int file_id, int direction) {
+    int user_id;
+    
+    user_id = to_id * MAX_FILE + file_id;
+    if (direction == S_FILE)
+        return reg_cookie(cookie_info, COOKIE_FILE, user_id);
+    else
+        return reg_cookie(cookie_info, COOKIE_FILE, -user_id);
 }
 
 int send_cookie(Cookie_info* cookie_info, int cookie, int user_id, int sock_fd, int key) {

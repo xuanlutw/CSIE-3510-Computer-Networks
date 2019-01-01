@@ -29,6 +29,13 @@ int get_cookie_user(Cookie_info* cookie_info, int cookie);
 int reg_cookie(Cookie_info* cookie_info, int type, int user_id);
 void invalid_cookie(Cookie_info* cookie_info, int cookie);
 
+#define S_FILE 0
+#define R_FILE 1
+int reg_file_cookie(Cookie_info* cookie_info, int to_id, int file_id, int direction);
+#define to_id_of_cookie(x)      ((x) / MAX_FILE)
+#define file_id_of_cookie(x)    ((x) % MAX_FILE)
+#define direction_of_cookie(x)  ((x) >= 0? S_FILE: R_FILE)
+
 int send_cookie(Cookie_info* cookie_info, int cookie, int user_id, int sock_fd, int key);
 
 #endif

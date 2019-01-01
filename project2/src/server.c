@@ -143,6 +143,19 @@ void* user_handle(void* thread_data) {
             ret = del_friend(user_id, sock_fd, key);
             server_log("User %d DELF, poor guy = %d", user_id, ret);
         }
+        // file
+        else if (!strcmp(recv_msg, "FLIST")) {
+            send_filelist(share_data->file_info, user_id, sock_fd, key);
+            server_log("User %d FLIST", user_id);
+        }
+        else if (!strcmp(recv_msg, "FSEND")) {
+            ret = send_file(share_data->file_info, share_data->cookie_info, user_id, sock_fd, key);
+            server_log("User %d FSEND to %d", user_id, ret);
+        }
+        else if (!strcmp(recv_msg, "FREAD")) {
+            ret = read_file(share_data->file_info, share_data->cookie_info, user_id, sock_fd, key);
+            server_log("User %d FREAD, file_id = %d", user_id, ret);
+        }
         // cookie
         else if (!strcmp(recv_msg, "ASKCK")) {
             cookie = send_cookie(share_data->cookie_info, cookie, user_id, sock_fd, key);
