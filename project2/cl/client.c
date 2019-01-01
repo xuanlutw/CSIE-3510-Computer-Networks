@@ -24,6 +24,10 @@ int print_user(int user_id, int sock_fd, int key, char** user_name);
 
 int username_to_id(int num_user, char**user_name, char* target_name);
 
+void print_msg(int user_id, int to_id, int sock_fd, int key, char** user_name);
+
+void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_name);
+
 int main(int argc, char* argv[]) {
     char address[BUF_SIZE];
     char* host_name;
@@ -102,7 +106,6 @@ int main(int argc, char* argv[]) {
             crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
             no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
             if (!strcmp(msg, "LGIDONE")) {
-                printf("Login suc!\n");
                 break;
             }
             else
@@ -139,7 +142,7 @@ int main(int argc, char* argv[]) {
         user_name[i] = malloc(sizeof(char) * BUF_SIZE);
     num_user = update_user_name(sock_fd, key, user_name);
     user_id = username_to_id(num_user, user_name, username);
-    
+   
     // Welcome info
     printf("\
  ____      ____    __                                   ______               __      _  \n\
@@ -151,20 +154,23 @@ int main(int argc, char* argv[]) {
                                                                                         \n");
     // Main loop
     while (1) {
-        printf("Who(W)/Message(M)/File(F)/Bye(B): ");
+        printf("Who(w)/Message(m)/File(f)/Bye(b): ");
 
+        // For test
         if (scanf("%s", msg) == EOF)
             break;
         
-        else if (!strcmp(msg, "B"))
+        //Bye
+        else if (!strcmp(msg, "b"))
             break;
 
-        else if (!strcmp(msg, "W")) {
+        // Who
+        else if (!strcmp(msg, "w")) {
             num_user = print_user(user_id, sock_fd, key, user_name);
             while (1) {
-                printf("Add(A)/Delete(D) friend/Continue(C): ");
+                printf("Add(a)/Delete(d) friend/Message(m)/Continue(c): ");
                 scanf("%s", msg);
-                if (!strcmp(msg, "A")) {
+                if (!strcmp(msg, "a")) {
                     printf("Add who? ");
                     scanf("%s", msg);
                     to_id = username_to_id(num_user, user_name, msg);
@@ -177,7 +183,7 @@ int main(int argc, char* argv[]) {
                         crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
                     }
                 }
-                else if (!strcmp(msg, "D")) {
+                else if (!strcmp(msg, "d")) {
                     printf("Delete who? ");
                     scanf("%s", msg);
                     to_id = username_to_id(num_user, user_name, msg);
@@ -190,13 +196,22 @@ int main(int argc, char* argv[]) {
                         crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
                     }
                 }
-                else if (!strcmp(msg, "C"))
+                else if (!strcmp(msg, "m")) {
+                    handle_msg(user_id, sock_fd, key, num_user,  user_name);
+                    break;
+                }
+                else
                     break;
             }
         }
-        else if (!strcmp(msg, "M")) {
+
+        // Message
+        else if (!strcmp(msg, "m")) {
+            handle_msg(user_id, sock_fd, key, num_user,  user_name);
         }
-        else if (!strcmp(msg, "F")) {
+
+        // File
+        else if (!strcmp(msg, "f")) {
         }
     }
 
@@ -378,6 +393,95 @@ int print_user(int user_id, int sock_fd, int key, char** user_name) {
     }
     printf("\n");
     return num_user;
+}
+
+#define MSG_SHOW 20
+void print_msg(int user_id, int to_id, int sock_fd, int key, char** user_name) {
+    int num;
+    int un_num;
+    int count;
+    int ret;
+    int tmp;
+    char msg[BUF_SIZE];
+
+    int id;
+    char bmsg[BUF_SIZE];
+
+    no_crypto_send(sock_fd, "READ", 5, 0);
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+    sprintf(msg, "%d", to_id);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    num = atoi(msg);   
+    count = 0;
+    while (msg[count] != 0) {
+        ++count;
+    }
+    ++count;
+
+    if (count == ret) {
+        ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+        count = 0;
+    }
+    un_num = atoi(msg + count);   
+    while (msg[count] != 0) {
+        ++count;
+    }
+    ++count;
+
+    printf("\n=====Message=====\n");
+    for (int i = 0;i < num;++i) {
+        if (count == ret) {
+            ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+            count = 0;
+        }
+        tmp = count;
+        while (msg[tmp] != 0)
+            ++tmp;
+        sscanf(msg + count, "%d\t%s", &id, bmsg);
+        count = tmp + 1;
+        if (num - i <= un_num) {
+            b64_decode(bmsg);
+            set_feature(FG_LIGHT_BLUE);
+            printf("%s\t: %s\n", user_name[id], bmsg);
+            set_feature(FG_LIGHT_WHITE);
+        }
+        else if (num - i <= MSG_SHOW) {
+            b64_decode(bmsg);
+            printf("%s\t: %s\n", user_name[id], bmsg);
+        }
+    }
+    printf("\n");
+}
+
+void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_name) {
+    char msg[BUF_SIZE];
+    char msg2[BUF_SIZE / 2];
+    int to_id;
+
+    printf("With who? ");
+    scanf("%s", msg);
+    to_id = username_to_id(num_user, user_name, msg);
+    if (to_id < 0 || to_id > num_user) {
+        printf("User not found!\n");
+        return;
+    }
+
+    getc(stdin); //'\n'
+    while(1) {
+        print_msg(user_id, to_id, sock_fd, key, user_name);
+        printf("%s\t: ", user_name[user_id]);
+        fgets(msg2, BUF_SIZE / 2, stdin);
+        int l = strlen(msg2);
+        msg2[l - 1] = 0;
+        if (!strcmp(msg2, ""))
+            break;
+        b64_encode(msg2);
+        no_crypto_send(sock_fd, "SEND", 5, 0);
+        no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
+        sprintf(msg, "%d\t%s", to_id, msg2);
+        crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    }
 }
 
 int username_to_id(int num_user, char**user_name, char* target_name) {
