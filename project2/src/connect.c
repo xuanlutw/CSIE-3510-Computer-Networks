@@ -3,7 +3,9 @@
 #include <string.h>
 #include <time.h>
 
+#include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -94,4 +96,36 @@ int get_auth(Share_data* share_data, int* user_id, int sock_fd, pthread_t handle
     no_crypto_send(sock_fd, "OVERFAIL", 9, 0);
     server_log("Socket %d get auth fail!", sock_fd);
     return -1;
+}
+
+void transfer_file(Share_data* share_data, int sock_fd, int key, int cookie) {
+    char filename[BUF_SIZE];
+    char msg[BUF_SIZE];
+    int fd;
+    int ret;
+    int cookie_info;
+
+    // Determine cookie
+    cookie_info = get_cookie_user(share_data->cookie_info, cookie);
+    sprintf(filename, "./data/file%d-%d", to_id_of_cookie(cookie_info), file_id_of_cookie(cookie_info));
+    fd = open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+
+    if (direction_of_cookie(cookie_info) == S_FILE) {
+        while (1) {
+            if ((ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0)) <= 0)
+                break;
+            write(fd, msg, ret);
+        }
+        valid_file(share_data->file_info, to_id_of_cookie(cookie_info), file_id_of_cookie(cookie_info));
+    }
+    else if (direction_of_cookie(cookie_info) == R_FILE) {
+        while (1) {
+            if ((ret = read(fd, msg, BUF_SIZE)) <= 0)
+                break;
+            crypto_send(key, sock_fd, msg, ret, 0);
+        }
+    }
+    close(fd);
+
+    return;
 }

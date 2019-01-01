@@ -82,10 +82,7 @@ void* user_handle(void* thread_data) {
                 pthread_exit(NULL);
             }
             break;
-        case COOKIE_FILE:
-            // reserve
-            server_log("Socket %d check cookie = %d, type file, user_id = %d", sock_fd, cookie, user_id);
-            break;
+        
         case COOKIE_NONE:
             no_crypto_send(sock_fd, "AUTHFAIL", 9, 0);
             server_log("Socket %d check cookie = %d, type none", sock_fd, cookie);
@@ -94,6 +91,14 @@ void* user_handle(void* thread_data) {
                 pthread_exit(NULL);
             }
             break;
+        
+        // FILE
+        case COOKIE_FILE:
+            transfer_file(share_data, sock_fd, key, cookie);
+            server_log("Socket %d check cookie = %d, type file, user_id = %d, file_id = %d, direction = %d", sock_fd, cookie, to_id_of_cookie(user_id), file_id_of_cookie(user_id), direction_of_cookie(user_id));
+            invalid_cookie(share_data->cookie_info, cookie);
+            close(sock_fd);
+            pthread_exit(NULL);
     }
 
     // Clean cookie

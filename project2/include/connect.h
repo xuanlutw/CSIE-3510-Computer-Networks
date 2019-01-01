@@ -16,5 +16,6 @@ int check_cookie(int sock_fd, int key);
 
 int attach_auth(Share_data* share_data, int user_id, int sock_fd, pthread_t handle);
 int get_auth(Share_data* share_data, int* user_id, int sock_fd, pthread_t handle, int key);
+void transfer_file(Share_data* share_data, int sock_fd, int key, int cookie);
 
 #endif

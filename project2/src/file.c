@@ -62,6 +62,18 @@ void send_filelist(File_info* file_info, int user_id, int sock_fd, int key) {
     pthread_mutex_unlock(file_info->lock + user_id);
 }
 
+void valid_file(File_info* file_info, int user_id, int file_id) {
+    File_list file_list[MAX_FILE];
+    int num_file;
+
+    pthread_mutex_lock(file_info->lock + user_id);
+    num_file = read_filelist(user_id, file_list);
+    file_list[file_id].status = 1;
+    back_filelist(user_id, num_file, file_list);
+
+    pthread_mutex_unlock(file_info->lock + user_id);
+}
+
 int send_file(File_info* file_info, Cookie_info* cookie_info, int user_id, int sock_fd, int key) {
     char msg[BUF_SIZE];
     char* saveptr;
@@ -82,7 +94,7 @@ int send_file(File_info* file_info, Cookie_info* cookie_info, int user_id, int s
     file_list[num_file].status = 0;
     strcpy(file_list[num_file].filename, strtok_r(NULL, "\t", &saveptr));
     ++num_file;
-    back_filelist(user_id, num_file, file_list);
+    back_filelist(to_id, num_file, file_list);
 
     pthread_mutex_unlock(file_info->lock + to_id);
 
