@@ -14,15 +14,15 @@
 #include "connect.h"
 #include "utils.h"
 
-Thread_data* init_thread_data(Share_data* share_data, int sock_fd) {
+Thread_data* init_thread_data(Share_data* share_data, int sock_fd, char* ip) {
     Thread_data* thread_data = (Thread_data*)malloc(sizeof(Thread_data));
     thread_data->share_data = share_data;
     thread_data->sock_fd = sock_fd;
+    strcpy(thread_data->ip, ip);
     return thread_data;
 }
 
-int wait_connect(Share_data* share_data, int wel_sock_fd) {
-    char str[INET_ADDRSTRLEN];
+int wait_connect(Share_data* share_data, int wel_sock_fd, char* str) {
     struct sockaddr_in caddr;
     socklen_t clen = sizeof(&caddr);
     int fd = accept(wel_sock_fd, (struct sockaddr*)&caddr, &clen);

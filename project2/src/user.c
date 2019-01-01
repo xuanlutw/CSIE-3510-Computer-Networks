@@ -157,3 +157,36 @@ void send_user_online(User_info* user_info, int sock_fd, int key) {
     }
     pthread_mutex_unlock(&user_info->lock);
 }
+
+void reg_last_login_info(char* ip, int user_id) {
+    char filename[BUF_SIZE];
+    char msg[BUF_SIZE];
+    time_t timer;
+    char t_buffer[26];
+    struct tm* tm_info;
+    time(&timer);
+    tm_info = localtime(&timer);
+    strftime(t_buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    sprintf(msg, "Previous login %s, from %s", t_buffer, ip);
+    b64_encode(msg);
+    sprintf(filename, "./data/last_login_info%d", user_id);
+    FILE* f = fopen(filename, "w");
+    fprintf(f, "%s", msg);
+    fclose(f);
+}
+
+void read_last_login_info(int user_id, int sock_fd, int key) {
+    char msg[BUF_SIZE];
+    char filename[BUF_SIZE];
+    sprintf(filename, "./data/last_login_info%d", user_id);
+    if (access(filename, R_OK|W_OK) == -1) {
+        strcpy(msg, "No previous login info");
+    }
+    else {
+        FILE* f = fopen(filename, "r");
+        fscanf(f, "%s", msg);
+        fclose(f);
+    }
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+}
+

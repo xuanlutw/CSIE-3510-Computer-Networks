@@ -220,6 +220,11 @@ int main(int argc, char* argv[]) {
     \\  /\\  /| \\__.,| || \\__.| \\__. || | | | | | \\__.,   _| |__) // | || \\__. | |`\\ \\|_| \n\
      \\/  \\/  '.__.[___'.___.''.__.'[___||__||__'.__.'  |_______/\\'-;__'.___.[__|  \\_(_) \n\
                                                                                         \n");
+    no_crypto_send(sock_fd, "LREAD", 6, 0);
+    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    b64_decode(msg);
+    printf("%s\n", msg);
+
     // Main loop
     while (1) {
         printf("Who(w)/Message(m)/File(f)/Anonymous(a)/Bye(b): ");

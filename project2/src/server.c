@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include "utils.h"
 #include "init.h"
@@ -20,6 +21,7 @@ int main(int argc, char* argv[]) {
     int port;
     int wel_sock_fd;
     int acp_sock_fd;
+    char ip[INET_ADDRSTRLEN];
     pthread_t t;
 
     // Disable SIGPIPE before any net connection
@@ -41,8 +43,8 @@ int main(int argc, char* argv[]) {
 
     // Main loop, wait connect
     while (1) {
-        acp_sock_fd = wait_connect(share_data, wel_sock_fd);
-        Thread_data* thread_data = init_thread_data(share_data, acp_sock_fd);
+        acp_sock_fd = wait_connect(share_data, wel_sock_fd, ip);
+        Thread_data* thread_data = init_thread_data(share_data, acp_sock_fd, ip);
         pthread_create(&t, NULL, user_handle, thread_data);
     }
 
@@ -56,7 +58,9 @@ void* user_handle(void* thread_data) {
     int user_id;
     int ret;
     int sock_fd = ((Thread_data*)thread_data)->sock_fd;
+    char ip[INET_ADDRSTRLEN];
     Share_data* share_data = ((Thread_data*)thread_data)->share_data;
+    strcpy(ip, ((Thread_data*)thread_data)->ip);
     free((Thread_data*)thread_data);
 
     char recv_msg[BUF_SIZE];
@@ -170,6 +174,13 @@ void* user_handle(void* thread_data) {
             read_anonymous(share_data->msg_info, user_id, sock_fd, key);
             server_log("User %d AREAD", user_id);
         }
+        // previous login
+        else if (!strcmp(recv_msg, "LREAD")) {
+            read_last_login_info(user_id, sock_fd, key);
+            reg_last_login_info(ip, user_id);
+            server_log("User %d LREAD", user_id);
+        }
+
         // cookie
         else if (!strcmp(recv_msg, "ASKCK")) {
             cookie = send_cookie(share_data->cookie_info, cookie, user_id, sock_fd, key);
