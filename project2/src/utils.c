@@ -103,6 +103,7 @@ void b64_decode(char* str) {
 // Reserved!
 ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags) {
     ssize_t ret = recv(socket, buffer, length, flags);
+    /*
     if (*((char*)buffer + (ret - 2)) == '\r') {
         *((char*)buffer + (ret - 2)) = 0;
         ret -= 2;
@@ -111,6 +112,7 @@ ssize_t crypto_recv(int key, int socket, void *buffer, size_t length, int flags)
         *((char*)buffer + (ret - 1)) = 0;
         ret -= 1;
     }
+    */
     return ret;
 }
 
@@ -122,6 +124,7 @@ ssize_t crypto_send(int key, int socket, const void *buffer, size_t length, int 
 
 ssize_t no_crypto_recv(int socket, void *buffer, size_t length, int flags) {
     ssize_t ret = recv(socket, buffer, length, flags);
+    /*
     if (*((char*)buffer + (ret - 2)) == '\r') {
         *((char*)buffer + (ret - 2)) = 0;
         ret -= 2;
@@ -130,6 +133,7 @@ ssize_t no_crypto_recv(int socket, void *buffer, size_t length, int flags) {
         *((char*)buffer + (ret - 1)) = 0;
         ret -= 1;
     }
+    */
     return ret;
 }
 
