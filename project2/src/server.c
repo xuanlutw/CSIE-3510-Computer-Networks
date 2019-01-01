@@ -161,6 +161,15 @@ void* user_handle(void* thread_data) {
             ret = read_file(share_data->file_info, share_data->cookie_info, user_id, sock_fd, key);
             server_log("User %d FREAD, file_id = %d", user_id, ret);
         }
+        // anonymous
+        else if (!strcmp(recv_msg, "ASEND")) {
+            ret = send_anonymous(share_data->msg_info, user_id, sock_fd, key);
+            server_log("User %d ASEND to %d", user_id, ret);
+        }
+        else if (!strcmp(recv_msg, "AREAD")) {
+            read_anonymous(share_data->msg_info, user_id, sock_fd, key);
+            server_log("User %d AREAD", user_id);
+        }
         // cookie
         else if (!strcmp(recv_msg, "ASKCK")) {
             cookie = send_cookie(share_data->cookie_info, cookie, user_id, sock_fd, key);
@@ -173,7 +182,7 @@ void* user_handle(void* thread_data) {
         }
         else {
             no_crypto_send(sock_fd, "WTF", 4, 0);
-            server_log("User %d murmur...", user_id);
+            server_log("User %d murmur...(%s)", user_id, recv_msg);
         }
     }
     user_detach(share_data->user_info, user_id);

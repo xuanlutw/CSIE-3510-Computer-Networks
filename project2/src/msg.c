@@ -155,3 +155,59 @@ int read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
     pthread_mutex_unlock(msg_info->lock + to_id);
     return to_id;
 }
+
+int send_anonymous(Msg_info* msg_info, int user_id, int sock_fd, int key) {
+    char filename[BUF_SIZE];
+    char msg[BUF_SIZE];
+    char* saveptr;
+    int to_id;
+    
+    no_crypto_send(sock_fd, "OKASEND", 8, 0);
+    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    to_id = atoi(strtok_r(msg, "\t", &saveptr));
+    
+    pthread_mutex_lock(msg_info->lock + to_id);
+    sprintf(filename, "./data/anon%d", to_id);
+
+    // write msg
+    FILE* f = fopen(filename, "a");
+    fprintf(f, "%s\n", strtok_r(NULL, "\t", &saveptr));
+    fclose(f);
+    
+    pthread_mutex_unlock(msg_info->lock + to_id);
+    return to_id;
+}
+
+int read_anonymous(Msg_info* msg_info, int user_id, int sock_fd, int key) {
+    char filename[BUF_SIZE];
+    char msg[BUF_SIZE];
+    char out_msg[BUF_SIZE + 100];
+    int counter = 0;
+    FILE* f;
+    
+    pthread_mutex_lock(msg_info->lock + user_id);
+    sprintf(filename, "./data/anon%d", user_id);
+
+    // creat file
+    int fd2 = open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+    close(fd2);
+
+    // send counter
+    f = fopen(filename, "r");
+    while (fscanf(f, "%s\n", msg) != EOF)
+        ++counter;
+    fclose(f);
+    sprintf(msg, "%d", counter);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    
+    // send msg
+    f = fopen(filename, "r");
+    while (fscanf(f, "%s", msg) != EOF) {
+        sprintf(out_msg, "%s", msg);
+        crypto_send(key, sock_fd, out_msg, strlen(out_msg) + 1, 0);
+    }
+    fclose(f);
+
+    pthread_mutex_unlock(msg_info->lock + user_id);
+    return user_id;
+}

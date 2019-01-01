@@ -44,8 +44,9 @@ int print_user(int user_id, int sock_fd, int key, char** user_name);
 int username_to_id(int num_user, char**user_name, char* target_name);
 
 void print_msg(int user_id, int to_id, int sock_fd, int key, char** user_name);
-
+void print_anonymous(int user_id, int sock_fd, int key, char** user_name);
 void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_name);
+void handle_anonymous(int user_id, int sock_fd, int key, int num_user, char** user_name);
 
 int update_file(int sock_fd, int key, File_list* file_list);
 int print_file(int user_id, int sock_fd, int key, char** user_name, int num_file, File_list* file_list);
@@ -130,9 +131,9 @@ int main(int argc, char* argv[]) {
     no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
 
     while (1) {
-        printf("Register(R)/Login(L): ");
+        printf("Register(r)/Login(l): ");
         scanf("%s", msg);
-        if (!strcmp(msg, "L")) {
+        if (!strcmp(msg, "l")) {
             no_crypto_send(sock_fd, "LGI", 4, 0);
             no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
             printf("\tUsername: ");
@@ -148,7 +149,7 @@ int main(int argc, char* argv[]) {
             else
                 printf("Login fail\n");
         }
-        else if (!strcmp(msg, "R")) {
+        else if (!strcmp(msg, "r")) {
             no_crypto_send(sock_fd, "REG", 4, 0);
             no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
             printf("\tUsername: ");
@@ -221,7 +222,7 @@ int main(int argc, char* argv[]) {
                                                                                         \n");
     // Main loop
     while (1) {
-        printf("Who(w)/Message(m)/File(f)/Bye(b): ");
+        printf("Who(w)/Message(m)/File(f)/Anonymous(a)/Bye(b): ");
 
         // For test
         if (scanf("%s", msg) == EOF)
@@ -275,6 +276,11 @@ int main(int argc, char* argv[]) {
         // Message
         else if (!strcmp(msg, "m")) {
             handle_msg(user_id, sock_fd, key, num_user,  user_name);
+        }
+
+        // Anonymous
+        else if (!strcmp(msg, "a")) {
+            handle_anonymous(user_id, sock_fd, key, num_user,  user_name);
         }
 
         // File
@@ -581,6 +587,44 @@ void print_msg(int user_id, int to_id, int sock_fd, int key, char** user_name) {
     printf("\n");
 }
 
+void print_anonymous(int user_id, int sock_fd, int key, char** user_name) {
+    int num;
+    int count;
+    int ret;
+    int tmp;
+    char msg[BUF_SIZE];
+
+    char bmsg[BUF_SIZE];
+
+    no_crypto_send(sock_fd, "AREAD", 6, 0);
+    ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    num = atoi(msg);   
+    count = 0;
+    while (msg[count] != 0) {
+        ++count;
+    }
+    ++count;
+    printf("%d\n", num);
+
+    printf("\n=====Anonymous Box=====\n");
+    for (int i = 0;i < num;++i) {
+        if (count == ret) {
+            ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+            count = 0;
+        }
+        tmp = count;
+        while (msg[tmp] != 0)
+            ++tmp;
+        sscanf(msg + count, "%s", bmsg);
+        count = tmp + 1;
+        if (num - i <= MSG_SHOW) {
+            b64_decode(bmsg);
+            printf("\t: %s\n", bmsg);
+        }
+    }
+    printf("\n");
+}
+
 void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_name) {
     char msg[BUF_SIZE];
     char msg2[BUF_SIZE / 2];
@@ -609,6 +653,41 @@ void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_nam
         no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
         sprintf(msg, "%d\t%s", to_id, msg2);
         crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    }
+}
+
+void handle_anonymous(int user_id, int sock_fd, int key, int num_user, char** user_name) {
+    char msg[BUF_SIZE];
+    char msg2[BUF_SIZE / 2];
+    int to_id;
+    int l;
+    printf("Send(s)/Read(r): ");
+    scanf("%s", msg);
+    if (!strcmp(msg, "s")) {
+        do {
+            printf("To who? ");
+            scanf("%s", msg);
+            to_id = username_to_id(num_user, user_name, msg);
+            if (to_id < 0 || to_id > num_user) {
+                printf("User not found!\n");
+                break;
+            }
+            printf("\t : ");
+            getc(stdin);
+            fgets(msg2, BUF_SIZE / 2, stdin);
+            l = strlen(msg2);
+            msg2[l - 1] = 0;
+            if (!strcmp(msg2, ""))
+                break;
+            b64_encode(msg2);
+            no_crypto_send(sock_fd, "ASEND", 6, 0);
+            no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
+            sprintf(msg, "%d\t%s", to_id, msg2);
+            crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+        } while (0);
+    }
+    else if (!strcmp(msg, "r")) {
+        print_anonymous(user_id, sock_fd, key, user_name);
     }
 }
 
