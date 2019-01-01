@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 
 #include <sys/types.h>
@@ -11,10 +12,20 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+#include <pthread.h>
+
 #include "utils.h"
 #include "user.h"
 #include "file.h"
 #include "color.h"
+
+typedef struct {
+    char filename[BUF_SIZE / 2];
+    char* host_name;
+    char* port;
+    int cookie;
+    int direction;
+} File_thread_data;
 
 int update_user_name(int sock_fd, int key, char** user_name);
 void update_online(int sock_fd, int key, int num_user, int* is_online);
@@ -30,8 +41,10 @@ void print_msg(int user_id, int to_id, int sock_fd, int key, char** user_name);
 void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_name);
 
 int update_file(int sock_fd, int key, File_list* file_list);
-void print_file(int user_id, int sock_fd, int key, char** user_name, int num_file, File_list* file_list);
+int print_file(int user_id, int sock_fd, int key, char** user_name, int num_file, File_list* file_list);
 int filename_to_id(int num_file, File_list* file_list, char* target_name);
+
+void* file_thread_handle(void* thread_data);
 
 int main(int argc, char* argv[]) {
     char address[BUF_SIZE];
@@ -44,10 +57,15 @@ int main(int argc, char* argv[]) {
     int num_user;
     int user_id;
     int to_id;
+    int l;
+    int ret;
     char msg[BUF_SIZE];
     char msg2[BUF_SIZE / 2];
     char username[BUF_SIZE / 2];
     char password[BUF_SIZE / 2];
+
+    pthread_t t;
+    File_thread_data file_thread_data;
 
     char* user_name[MAX_USER];
 
@@ -144,7 +162,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Get cookie, user_name
-    no_crypto_send(sock_fd, "REG", 4, 0);
+    no_crypto_send(sock_fd, "ASKCK", 6, 0);
 	crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
     cookie = atoi(msg);
     for (int i = 0;i < MAX_USER;++i)
@@ -223,6 +241,8 @@ int main(int argc, char* argv[]) {
         else if (!strcmp(msg, "f")) {
             printf("Send(s)/Read(r): ");
             scanf("%s", msg);
+            file_thread_data.port = port;
+            file_thread_data.host_name = host_name;
             if (!strcmp(msg, "s")) {
                 do {
                     printf("To who? ");
@@ -242,17 +262,28 @@ int main(int argc, char* argv[]) {
                     no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
                     sprintf(msg, "%d\t%s", to_id, msg2);
                     crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-                    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0); //Cookie
+                    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
                     // Creat new thread!
+                    file_thread_data.cookie = atoi(msg);
+                    file_thread_data.direction = S_FILE;
+                    strcpy(file_thread_data.filename, msg2);
+                    pthread_create(&t, NULL, file_thread_handle, &file_thread_data);
                 } while (0);
             }
             else if (!strcmp(msg, "r")) {
                 do {
                     num_file = update_file(sock_fd, key, file_list);
-                    print_file(user_id, sock_fd, key, user_name, num_file, file_list);
+                    ret = print_file(user_id, sock_fd, key, user_name, num_file, file_list);
+                    if (!ret)
+                        break;
+                    getc(stdin); //'\n'
                     printf("Download which file? ");
-                    scanf("%s", msg);
-                    to_id = filename_to_id(num_file, file_list, msg);
+                    fgets(msg2, BUF_SIZE / 2, stdin);
+                    l = strlen(msg2);
+                    msg2[l - 1] = 0;
+                    if (!strcmp(msg2, ""))
+                        break;
+                    to_id = filename_to_id(num_file, file_list, msg2);
                     if (to_id < 0) {
                         printf("File not found!\n");
                         break;
@@ -263,6 +294,10 @@ int main(int argc, char* argv[]) {
                     crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
                     crypto_recv(key, sock_fd, msg, BUF_SIZE, 0); // Cookie
                     // Creat new thread!
+                    file_thread_data.cookie = atoi(msg);
+                    file_thread_data.direction = R_FILE;
+                    strcpy(file_thread_data.filename, msg2);
+                    pthread_create(&t, NULL, file_thread_handle, &file_thread_data);
                 } while (0);
             }
         }
@@ -302,7 +337,6 @@ int update_user_name(int sock_fd, int key, char** user_name) {
     }
     return num;
 }
-
 
 void update_online(int sock_fd, int key, int num_user, int* is_online) {
     int num;
@@ -511,6 +545,7 @@ void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_nam
     char msg[BUF_SIZE];
     char msg2[BUF_SIZE / 2];
     int to_id;
+    int l;
 
     printf("With who? ");
     scanf("%s", msg);
@@ -525,7 +560,7 @@ void handle_msg(int user_id, int sock_fd, int key, int num_user, char** user_nam
         print_msg(user_id, to_id, sock_fd, key, user_name);
         printf("%s\t: ", user_name[user_id]);
         fgets(msg2, BUF_SIZE / 2, stdin);
-        int l = strlen(msg2);
+        l = strlen(msg2);
         msg2[l - 1] = 0;
         if (!strcmp(msg2, ""))
             break;
@@ -577,15 +612,19 @@ int update_file(int sock_fd, int key, File_list* file_list) {
     return num;
 }
 
-void print_file(int user_id, int sock_fd, int key, char** user_name, int num_file, File_list* file_list) {
+int print_file(int user_id, int sock_fd, int key, char** user_name, int num_file, File_list* file_list) {
+    int ret = 0;
     printf("\n=======FILE=======\n");
     for (int i = 0;i < num_file;++i) {
         if (file_list[i].status == 0)
             continue;
         printf("%s\t: %s\n", user_name[file_list[i].from], file_list[i].filename);
+        ++ret;
     }
+    if (!ret)
+        printf("(no file)");
     printf("\n");
-    return;
+    return ret;
 }
 
 int filename_to_id(int num_file, File_list* file_list, char* target_name) {
@@ -596,4 +635,81 @@ int filename_to_id(int num_file, File_list* file_list, char* target_name) {
             break;
         }
     return ret;
+}
+
+void* file_thread_handle(void* thread_data) {
+    char filename[BUF_SIZE / 2];
+    char msg[BUF_SIZE];
+    int fd;
+    int ret;
+    int cookie;
+    int sock_fd;
+    int status;
+    int key;
+    int direction;
+
+    char* host_name;
+    char* port;
+    struct addrinfo *servinfo;
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_STREAM; 
+    hints.ai_flags    = AI_PASSIVE; 
+    
+    // copy data
+    strcpy(filename, ((File_thread_data*)thread_data)->filename);
+    port = ((File_thread_data*)thread_data)->port;
+    host_name = ((File_thread_data*)thread_data)->host_name;
+    cookie = ((File_thread_data*)thread_data)->cookie;
+    direction = ((File_thread_data*)thread_data)->direction;
+
+    // Socket
+    if ((status = getaddrinfo(host_name, port, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+        exit(1);
+    }
+    sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+    if (connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen) != 0) {
+        fprintf(stderr, "Server unavailable, connect fail\n");
+        exit(1);
+    }
+
+    // Handshake
+    no_crypto_send(sock_fd, "HI", 3, 0);
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+    if (strcmp(msg, "HI")) {
+        fprintf(stderr, "Handshake fail\n");
+        exit(1);
+    }
+    key = 0; // reserve
+
+    // Cookie
+    sprintf(msg, "%d", cookie);
+    no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0); // NO response
+
+    // Determine cookie
+
+    if (direction == R_FILE) {
+        if (access("./download", R_OK) == -1)
+            while (mkdir("./download", S_IRWXU) == -1);
+        sprintf(msg, "./download/%s", filename);
+        fd = open(msg, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+        while (1) {
+            if ((ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0)) <= 0)
+                break;
+            write(fd, msg, ret);
+        }
+    }
+    else if (direction == S_FILE) {
+        fd = open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+        while (1) {
+            if ((ret = read(fd, msg, BUF_SIZE)) <= 0)
+                break;
+            crypto_send(key, sock_fd, msg, ret, 0);
+        }
+    }
+    close(fd);
+    close(sock_fd);
+    pthread_exit(NULL);
 }

@@ -22,7 +22,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 client: cl/*.c obj/utils.o
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< obj/utils.o -o client 
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $< obj/utils.o -o client 
 
 clean:
 	$(RM) $(OBJ) server client
