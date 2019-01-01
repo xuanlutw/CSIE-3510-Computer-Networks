@@ -191,7 +191,11 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Handshake fail\n");
             exit(1);
         }
-        key = 0; // reserve
+        int b = rand();
+        sprintf(msg, "%d", power_mod(DH_G, b));
+        no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0);
+        no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+        key = power_mod(atoi(msg), b);
         
         sprintf(msg, "%d", cookie);
         crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
@@ -203,6 +207,7 @@ int main(int argc, char* argv[]) {
     no_crypto_send(sock_fd, "ASKCK", 6, 0);
 	crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
     cookie = atoi(msg);
+    printf("%d\n", cookie);
     for (int i = 0;i < MAX_USER;++i)
         user_name[i] = malloc(sizeof(char) * BUF_SIZE);
     num_user = update_user_name(sock_fd, key, user_name);
