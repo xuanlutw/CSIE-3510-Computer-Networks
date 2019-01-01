@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <pthread.h>
 
@@ -123,9 +124,13 @@ int read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
         sprintf(filename, "./data/msg%d-%d", to_id, user_id);
     }
 
+    // creat file
+    int fd2 = open (filename, O_RDWR|O_CREAT);
+    close(fd2);
+
     // send counter
     f = fopen(filename, "r");
-    while (fscanf(f, "%d\t%s\n", &src_id, msg) != EOF)
+    while (fscanf(f, "%d\t%s", &src_id, msg) != EOF)
         ++counter;
     fclose(f);
     sprintf(msg, "%d", counter);
@@ -140,9 +145,9 @@ int read_msg(Msg_info* msg_info, int user_id, int sock_fd, int key) {
 
     // send msg
     f = fopen(filename, "r");
-    while (fscanf(f, "%d\t%s\n", &src_id, msg) != EOF) {
+    while (fscanf(f, "%d\t%s", &src_id, msg) != EOF) {
         sprintf(out_msg, "%d\t%s", src_id, msg);
-        crypto_send(key, sock_fd, out_msg, strlen(msg) + 1, 0);
+        crypto_send(key, sock_fd, out_msg, strlen(out_msg) + 1, 0);
     }
     fclose(f);
 
