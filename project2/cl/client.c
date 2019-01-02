@@ -54,6 +54,8 @@ int filename_to_id(int num_file, File_list* file_list, char* target_name);
 
 void* file_thread_handle(void* thread_data);
 
+int cl_hand_shake(int sock_fd);
+
 int main(int argc, char* argv[]) {
     char address[BUF_SIZE];
     char* host_name;
@@ -114,17 +116,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Handshake
-    no_crypto_send(sock_fd, "HI", 3, 0);
-    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
-    if (strcmp(msg, "HI")) {
-        fprintf(stderr, "Handshake fail\n");
-        exit(1);
-    }
-    int b = rand();
-    sprintf(msg, "%d", power_mod(DH_G, b));
-    no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0);
-    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
-    key = power_mod(atoi(msg), b);
+    key = cl_hand_shake(sock_fd);
 
     // Cookie
     crypto_send(key, sock_fd, "0", 2, 0);
@@ -176,26 +168,22 @@ int main(int argc, char* argv[]) {
     if (setjmp(buf)) {
         printf("Connection lose QQ\n");
         for (int i = 0;i < MAX_RECON;++i) {
-            printf("Trying %d / %d...\n", i, MAX_RECON);
+            if (i % 10 == 0) 
+                printf("Trying %d / %d...\n", i + 1, MAX_RECON);
             status = getaddrinfo(host_name, port, &hints, &servinfo);
             sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
             if (!connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen))
                 break;
             sleep(1);
+
+            if (i == MAX_RECON) {
+                printf("Reconnection fail!\n");
+                exit(1);
+            }
         }
 
-        // Handshake, again...
-        no_crypto_send(sock_fd, "HI", 3, 0);
-        no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
-        if (strcmp(msg, "HI")) {
-            fprintf(stderr, "Handshake fail\n");
-            exit(1);
-        }
-        int b = rand();
-        sprintf(msg, "%d", power_mod(DH_G, b));
-        no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0);
-        no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
-        key = power_mod(atoi(msg), b);
+        // Handshake
+        key = cl_hand_shake(sock_fd);
         
         sprintf(msg, "%d", cookie);
         crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
@@ -207,7 +195,6 @@ int main(int argc, char* argv[]) {
     no_crypto_send(sock_fd, "ASKCK", 6, 0);
 	crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
     cookie = atoi(msg);
-    printf("%d\n", cookie);
     for (int i = 0;i < MAX_USER;++i)
         user_name[i] = malloc(sizeof(char) * BUF_SIZE);
     num_user = update_user_name(sock_fd, key, user_name);
@@ -229,6 +216,7 @@ int main(int argc, char* argv[]) {
     crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
     b64_decode(msg);
     printf("%s\n", msg);
+    printf("Cookie = %d\n", cookie);
 
     // Main loop
     while (1) {
@@ -805,13 +793,7 @@ void* file_thread_handle(void* thread_data) {
     }
 
     // Handshake
-    no_crypto_send(sock_fd, "HI", 3, 0);
-    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
-    if (strcmp(msg, "HI")) {
-        fprintf(stderr, "Handshake fail\n");
-        exit(1);
-    }
-    key = 0; // reserve
+    key = cl_hand_shake(sock_fd);
 
     // Cookie
     sprintf(msg, "%d", cookie);
@@ -846,4 +828,23 @@ void* file_thread_handle(void* thread_data) {
 static void pipe_handle(int nSigno) {
     signal(nSigno, pipe_handle);
     longjmp(buf, 1);
+}
+
+int cl_hand_shake(int sock_fd) {
+    char msg[BUF_SIZE];
+    int b;
+    int key;
+
+    no_crypto_send(sock_fd, "HI", 3, 0);
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+    if (strcmp(msg, "HI")) {
+        fprintf(stderr, "Handshake fail\n");
+        exit(1);
+    }
+    b = rand();
+    sprintf(msg, "%d", power_mod(DH_G, b));
+    no_crypto_send(sock_fd, msg, strlen(msg) + 1, 0);
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+    key = power_mod(atoi(msg), b);
+    return key;
 }
