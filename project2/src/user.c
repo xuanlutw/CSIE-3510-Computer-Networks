@@ -181,6 +181,7 @@ void read_last_login_info(int user_id, int sock_fd, int key) {
     sprintf(filename, "./data/last_login_info%d", user_id);
     if (access(filename, R_OK|W_OK) == -1) {
         strcpy(msg, "No previous login info");
+        b64_encode(msg);
     }
     else {
         FILE* f = fopen(filename, "r");
