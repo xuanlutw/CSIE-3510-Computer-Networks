@@ -349,6 +349,8 @@ int main(int argc, char* argv[]) {
 
     no_crypto_send(sock_fd, "BYE", 4, 0);
     close(sock_fd);
+    printf("Waiting file transfer...\n");
+    pthread_exit(NULL); 
 }
 
 int update_user_name(int sock_fd, int key, char** user_name) {
