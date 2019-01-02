@@ -98,8 +98,9 @@ void* user_handle(void* thread_data) {
         
         // FILE
         case COOKIE_FILE:
-            transfer_file(share_data, sock_fd, key, cookie);
             server_log("Socket %d check cookie = %d, type file, user_id = %d, file_id = %d, direction = %d", sock_fd, cookie, to_id_of_cookie(user_id), file_id_of_cookie(user_id), direction_of_cookie(user_id));
+            transfer_file(share_data, sock_fd, key, cookie);
+            server_log("Socket %d transfer file done!", sock_fd);
             invalid_cookie(share_data->cookie_info, cookie);
             close(sock_fd);
             pthread_exit(NULL);

@@ -806,19 +806,15 @@ void* file_thread_handle(void* thread_data) {
             while (mkdir("./download", S_IRWXU) == -1);
         sprintf(msg, "./download/%s", filename);
         fd = open(msg, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
-        while (1) {
-            if ((ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0)) <= 0)
-                break;
+
+        while ((ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0)) > 0)
             write(fd, msg, ret);
-        }
     }
     else if (direction == S_FILE) {
-        fd = open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
-        while (1) {
-            if ((ret = read(fd, msg, BUF_SIZE)) <= 0)
-                break;
+        fd = open(filename, O_RDONLY);
+
+        while ((ret = read(fd, msg, BUF_SIZE)) > 0)
             crypto_send(key, sock_fd, msg, ret, 0);
-        }
     }
     close(fd);
     close(sock_fd);

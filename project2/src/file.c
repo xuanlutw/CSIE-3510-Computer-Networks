@@ -88,8 +88,18 @@ int send_file(File_info* file_info, Cookie_info* cookie_info, int user_id, int s
     
     pthread_mutex_lock(file_info->lock + to_id);
 
-    // updata file list
     num_file = read_filelist(to_id, file_list);
+    
+    // Special case, when user_id = 0, file_id = 0, direction fail !!
+    // To prevent this case, give a never ready data
+    if (user_id == 0 && num_file == 0) {
+        ++num_file;
+        file_list[0].from = 0;
+        file_list[0].status = 0; // Never ready !
+        strcpy(file_list[0].filename, "system_reserve");
+    }
+
+    // updata file list
     file_list[num_file].from = user_id;
     file_list[num_file].status = 0;
     strcpy(file_list[num_file].filename, strtok_r(NULL, "\t", &saveptr));

@@ -116,20 +116,13 @@ void transfer_file(Share_data* share_data, int sock_fd, int key, int cookie) {
     fd = open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
 
     if (direction_of_cookie(cookie_info) == S_FILE) {
-        while (1) {
-            if ((ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0)) <= 0)
-                break;
+        while ((ret = crypto_recv(key, sock_fd, msg, BUF_SIZE, 0)) > 0)
             write(fd, msg, ret);
-        }
         valid_file(share_data->file_info, to_id_of_cookie(cookie_info), file_id_of_cookie(cookie_info));
     }
-    else if (direction_of_cookie(cookie_info) == R_FILE) {
-        while (1) {
-            if ((ret = read(fd, msg, BUF_SIZE)) <= 0)
-                break;
+    else if (direction_of_cookie(cookie_info) == R_FILE)
+        while ((ret = read(fd, msg, BUF_SIZE)) > 0)
             crypto_send(key, sock_fd, msg, ret, 0);
-        }
-    }
     close(fd);
 
     return;
