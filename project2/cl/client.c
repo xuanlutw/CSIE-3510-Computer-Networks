@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
     int status;
     int sock_fd;
     int key;
-    int cookie;
+    int cookie = 0;
     int num_user;
     int user_id;
     int to_id;
@@ -105,67 +105,19 @@ int main(int argc, char* argv[]) {
     scanf("%s", address);
     host_name = strtok(address, ":");
     port = strtok(NULL, ":");
-    if ((status = getaddrinfo(host_name, port, &hints, &servinfo)) != 0) {
-        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-        exit(1);
-    }
-    sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-    if (connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen) != 0) {
-        fprintf(stderr, "Server unavailable, connect fail\n");
-        exit(1);
-    }
-
-    // Handshake
-    key = cl_hand_shake(sock_fd);
-
-    // Cookie
-    crypto_send(key, sock_fd, "0", 2, 0);
-    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
-
-    while (1) {
-        printf("Register(r)/Login(l): ");
-        scanf("%s", msg);
-        if (!strcmp(msg, "l")) {
-            no_crypto_send(sock_fd, "LGI", 4, 0);
-            no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
-            printf("\tUsername: ");
-            scanf("%s", username);
-            printf("\tPassword: ");
-            scanf("%s", password);
-            sprintf(msg, "%s\t%s", username, password);
-            crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-            no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
-            if (!strcmp(msg, "LGIDONE")) {
-                break;
-            }
-            else
-                printf("Login fail\n");
+    if (!setjmp(buf)) {
+        if ((status = getaddrinfo(host_name, port, &hints, &servinfo)) != 0) {
+            fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+            exit(1);
         }
-        else if (!strcmp(msg, "r")) {
-            no_crypto_send(sock_fd, "REG", 4, 0);
-            no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
-            printf("\tUsername: ");
-            scanf("%s", username);
-            printf("\tPassword: ");
-            scanf("%s", password);
-            sprintf(msg, "%s\t%s", username, password);
-            crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-            no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
-            if (!strcmp(msg, "REGDONE")) {
-                printf("Regist suc!\n");
-                break;
-            }
-            else if (!strcmp(msg, "REGDUP")) {
-                printf("Username already exist QQ\n");
-            }
-            else if (!strcmp(msg, "REGWPW")) {
-                printf("Password too weak QQ\n");
-            }
+        sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+        if (connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen) != 0) {
+            fprintf(stderr, "Server unavailable, connect fail\n");
+            exit(1);
         }
     }
-
     // Reconnection
-    if (setjmp(buf)) {
+    else {
         printf("Connection lose QQ\n");
         for (int i = 0;i < MAX_RECON;++i) {
             if (i % 10 == 0) 
@@ -182,18 +134,64 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Handshake
-        key = cl_hand_shake(sock_fd);
-        
-        sprintf(msg, "%d", cookie);
-        crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
-        no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
-    }
+    } 
+
+    // Handshake
+    key = cl_hand_shake(sock_fd);
+
+    // Cookie
+    sprintf(msg, "%d", cookie);
+    crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+    no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); 
 
     // Get auth
+    if (strcmp(msg, "AUTHOK")) {
+        while (1) {
+            printf("Register(r)/Login(l): ");
+            scanf("%s", msg);
+            if (!strcmp(msg, "l")) {
+                no_crypto_send(sock_fd, "LGI", 4, 0);
+                no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
+                printf("\tUsername: ");
+                scanf("%s", username);
+                printf("\tPassword: ");
+                scanf("%s", password);
+                sprintf(msg, "%s\t%s", username, password);
+                crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+                no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+                if (!strcmp(msg, "LGIDONE")) {
+                    break;
+                }
+                else
+                    printf("Login fail\n");
+            }
+            else if (!strcmp(msg, "r")) {
+                no_crypto_send(sock_fd, "REG", 4, 0);
+                no_crypto_recv(sock_fd, msg, BUF_SIZE, 0); // Skip response
+                printf("\tUsername: ");
+                scanf("%s", username);
+                printf("\tPassword: ");
+                scanf("%s", password);
+                sprintf(msg, "%s\t%s", username, password);
+                crypto_send(key, sock_fd, msg, strlen(msg) + 1, 0);
+                no_crypto_recv(sock_fd, msg, BUF_SIZE, 0);
+                if (!strcmp(msg, "REGDONE")) {
+                    printf("Regist suc!\n");
+                    break;
+                }
+                else if (!strcmp(msg, "REGDUP")) {
+                    printf("Username already exist QQ\n");
+                }
+                else if (!strcmp(msg, "REGWPW")) {
+                    printf("Password too weak QQ\n");
+                }
+            }
+        }
+    }
+
     // Get cookie, user_name
     no_crypto_send(sock_fd, "ASKCK", 6, 0);
-	crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
+    crypto_recv(key, sock_fd, msg, BUF_SIZE, 0);
     cookie = atoi(msg);
     for (int i = 0;i < MAX_USER;++i)
         user_name[i] = malloc(sizeof(char) * BUF_SIZE);
@@ -824,7 +822,7 @@ void* file_thread_handle(void* thread_data) {
 }
 
 static void pipe_handle(int nSigno) {
-    signal(nSigno, pipe_handle);
+    signal(nSigno, &pipe_handle);
     longjmp(buf, 1);
 }
 
