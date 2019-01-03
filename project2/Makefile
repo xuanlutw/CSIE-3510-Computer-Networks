@@ -13,7 +13,7 @@ LDLIBS += -lm
 
 .PHONY: all clean
 
-all: $(EXE)
+all: $(EXE) client
 
 $(EXE): $(OBJ)
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
