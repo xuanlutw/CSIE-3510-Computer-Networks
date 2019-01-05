@@ -105,36 +105,40 @@ int main(int argc, char* argv[]) {
     scanf("%s", address);
     host_name = strtok(address, ":");
     port = strtok(NULL, ":");
-    if (!setjmp(buf)) {
-        if ((status = getaddrinfo(host_name, port, &hints, &servinfo)) != 0) {
-            fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-            exit(1);
-        }
-        sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-        if (connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen) != 0) {
-            fprintf(stderr, "Server unavailable, connect fail\n");
-            exit(1);
-        }
-    }
-    // Reconnection
-    else {
-        printf("Connection lose QQ\n");
-        for (int i = 0;i < MAX_RECON;++i) {
-            if (i % 10 == 0) 
-                printf("Trying %d / %d...\n", i + 1, MAX_RECON);
-            status = getaddrinfo(host_name, port, &hints, &servinfo);
-            sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-            if (!connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen))
-                break;
-            sleep(1);
 
-            if (i == MAX_RECON) {
-                printf("Reconnection fail!\n");
+    int fl = 0;
+    do {
+        if (!fl) {
+            if ((status = getaddrinfo(host_name, port, &hints, &servinfo)) != 0) {
+                fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+                exit(1);
+            }
+            sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+            if (connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen) != 0) {
+                fprintf(stderr, "Server unavailable, connect fail\n");
                 exit(1);
             }
         }
+        // Reconnection
+        else {
+            printf("Connection lose QQ\n");
+            for (int i = 0;i < MAX_RECON;++i) {
+                if (i % 10 == 0) 
+                    printf("Trying %d / %d...\n", i + 1, MAX_RECON);
+                status = getaddrinfo(host_name, port, &hints, &servinfo);
+                sock_fd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+                if (!connect(sock_fd, servinfo->ai_addr, servinfo->ai_addrlen))
+                    break;
+                sleep(1);
 
-    } 
+                if (i == MAX_RECON) {
+                    printf("Reconnection fail!\n");
+                    exit(1);
+                }
+            }
+        }
+        fl = sigsetjmp(buf, 1);
+    } while (fl);
 
     // Handshake
     key = cl_hand_shake(sock_fd);
@@ -823,7 +827,7 @@ void* file_thread_handle(void* thread_data) {
 
 static void pipe_handle(int nSigno) {
     signal(nSigno, &pipe_handle);
-    longjmp(buf, 1);
+    siglongjmp(buf, 1);
 }
 
 int cl_hand_shake(int sock_fd) {
