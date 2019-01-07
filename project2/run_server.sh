@@ -1,0 +1,2 @@
+make
+./server $1
